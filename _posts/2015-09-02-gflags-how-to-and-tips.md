@@ -2,7 +2,7 @@
 layout: post
 title:  "gflags' How-To and Tips"
 date: 2015-09-02 21:06:26 +0800
-categories: experience, summary
+categories: experience summary
 ---
 
 2. define flags in header files or cpp files which invoke the flags
