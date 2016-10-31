@@ -1,6 +1,7 @@
 ---
 layout: post
 title:  Styles at a glance
+date: 2010-01-01 00:00:00 +0800
 category: jekyll 
 description: Simple is a beautiful but functional jekyll theme. The font-type setting looks really good when writers use CJK mixed with English.
 ---
