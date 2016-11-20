@@ -1,8 +1,10 @@
 ---
-layout: post
+layout: dark-post
 title:  "gflags' How-To and Tips"
 date: 2015-09-02 21:06:26 +0800
+comments: true
 categories: experience summary
+tags: gflag
 ---
 
 2. define flags in header files or cpp files which invoke the flags
@@ -13,21 +15,24 @@ categories: experience summary
 		DEFINE_int32(port, 8899, "TCP port for server");
 		DEFINE_int32(libbp_log_level, 4, "explanation");
 
+
 	or, just define them
 
 		DEFINE_bool(debug_mode);
 		DEFINE_int32(port);
 		DEFINE_int64(log_level);
 
+<!-- more -->
+
 2. in flag file, there should not be any spaces between flag and value, or the
 	flag my be null
 
-	correct, FLAGS_my_flag will be `a b c` or `"abc"`, pay attion to the spaces
+	correct, `FLAGS_my_flag` will be `a b c` or `"abc"`, pay attion to the spaces
 
 		-my_flag=a b c
 		-my_flag="abc"
 
-	<font color=#ff0000>***wrong***</font>, FLAGS_my_flag will be empty (nothing)
+	<font color=#ff0000>***wrong***</font>, `FLAGS_my_flag` will be empty (nothing)
 
 		-my_flag = abcded
 
