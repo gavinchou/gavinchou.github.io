@@ -15,7 +15,7 @@ logo:             images/eecs_logo.png # logo visible in the topbar
 # Your site's domain goes here (eg: //mmistakes.github.io, http://mademistakes.com, etc)
 # When testing locally leave blank or use http://localhost:4000
 
-url: http://gavinchou.github.io/
+url: http://gavinchou.github.io
 
 # draw your top menu here
 # each item must have a title and a url.
