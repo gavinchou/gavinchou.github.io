@@ -99,7 +99,7 @@ paginate: 5
 # if true, shows the floatting share buttons
 float_share: false
 
-markdown:    kramdown
+# markdown:    kramdown
 # markdown:    redcarpet
 
 kramdown:
