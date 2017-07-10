@@ -103,7 +103,8 @@ float_share: false
 # markdown:    redcarpet
 
 kramdown:
-  input: GFM
+#   input: GFM
+  input: Markdown
 
   auto_ids: true
   footnote_nr: 1
