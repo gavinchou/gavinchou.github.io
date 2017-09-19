@@ -108,8 +108,8 @@ kramdown:
   footnote_nr: 1
   entity_output: as_char
   toc_levels: 1..6
-#   enable_coderay: true # coderay will mess up the inline code block
-# 
+  # coderay will mess up the inline code block
+#   enable_coderay: true 
 #   coderay:
 #     coderay_line_numbers: true
 #     coderay_line_numbers_start: 1

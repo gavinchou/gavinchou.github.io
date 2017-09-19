@@ -1,5 +1,5 @@
 ---
-layout: dark-post
+layout: post
 title:  "gflags' How-To and Tips"
 date: 2015-09-02 21:06:26 +0800
 comments: true
