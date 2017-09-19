@@ -10,6 +10,7 @@ tags: encoding float
 #  IEEE754, floating point, conversion (representation)
 
 ### binary representation
+<!-- more -->
 ```
 for single precition, float 32bits
 
@@ -44,7 +45,6 @@ exp 11 bits
 mantissa 52 bits
 
 ```
-
 ### IEEE754 binary to decimal
 
 ```

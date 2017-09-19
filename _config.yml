@@ -6,7 +6,7 @@
 # 'jekyll serve'. If you change this file, please restart the server process.
 
 title:            Gavin's Blog
-description:      Describe your website here.
+description:      Share and improve.
 # put your disqus here
 disqus_shortname: gavinchou
 reading_time:     true # if true, shows the estimated reading time for a post
@@ -25,10 +25,6 @@ url: http://gavinchou.github.io
 menu:
   - title: 'Home'
     url: '/'
-#   - title: 'Fork'
-#     url: 'http://github.com/aron-bordin/neo-hpstr-jekyll-theme'
-#   - title: 'Install'
-#     url: '/theme-setup/'
   - title: 'Tags'
     url: '/tags'
   - title: 'Categories'
@@ -94,7 +90,7 @@ sass:
 permalink:   /:categories/:title/
 
 # Amount of post to show on home page
-paginate: 3
+paginate: 100
 
 # if true, shows the floatting share buttons
 float_share: false

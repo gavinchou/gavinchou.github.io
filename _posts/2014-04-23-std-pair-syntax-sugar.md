@@ -13,10 +13,12 @@ categories: experience summary c++ syntax
 另外, 当我们自己想用pair来代表两个有一定关联的数据的时候, 最直接的方式是使用`std::pair`,
 但是`pair`中的`first`, `second`又不是那么的能表达代码的含义.
  
+<!-- more -->
 所以, 在实际写代码的时候, 我在思考有没有一个比较好的方式来封装这个`std::pair`来赋予`first`,
 `second`一些含义呢?
  
 以下为我找到的一种方式, 用宏来做了一个`std::pair`的"alias", 我叫它`NAMED_PAIR`.
+ 
  
 ```
 #define TEST11_TAG "custome std::pair test"

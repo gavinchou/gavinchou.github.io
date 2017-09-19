@@ -7,7 +7,7 @@ categories: experience summary
 tags: gflag
 ---
 
-2. define flags in header files or cpp files which invoke the flags
+1. define flags in header files or cpp files which invoke the flags
 
 	define flags with initial values
 
@@ -15,14 +15,13 @@ tags: gflag
 		DEFINE_int32(port, 8899, "TCP port for server");
 		DEFINE_int32(libbp_log_level, 4, "explanation");
 
-
+<!-- more -->
 	or, just define them
 
 		DEFINE_bool(debug_mode);
 		DEFINE_int32(port);
 		DEFINE_int64(log_level);
 
-<!-- more -->
 
 2. in flag file, there should not be any spaces between flag and value, or the
 	flag my be null
