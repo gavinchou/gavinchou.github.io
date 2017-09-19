@@ -94,13 +94,12 @@ sass:
 permalink:   /:categories/:title/
 
 # Amount of post to show on home page
-paginate: 5
+paginate: 3
 
 # if true, shows the floatting share buttons
 float_share: false
 
-markdown:    kramdown
-# markdown:    redcarpet
+markdown: kramdown
 
 kramdown:
   input: GFM
@@ -109,14 +108,14 @@ kramdown:
   footnote_nr: 1
   entity_output: as_char
   toc_levels: 1..6
-  enable_coderay: true
-
-  coderay:
-    coderay_line_numbers: nil
-    coderay_line_numbers_start: 1
-    coderay_tab_width: 2
-    coderay_bold_every: 10
-    coderay_css: class
+#   enable_coderay: true # coderay will mess up the inline code block
+# 
+#   coderay:
+#     coderay_line_numbers: true
+#     coderay_line_numbers_start: 1
+#     coderay_tab_width: 2
+#     coderay_bold_every: 10
+#     coderay_css: class
 
 # Octopress
 # Default extensions
