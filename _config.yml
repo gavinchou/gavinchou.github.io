@@ -99,12 +99,11 @@ paginate: 5
 # if true, shows the floatting share buttons
 float_share: false
 
-# markdown:    kramdown
+markdown:    kramdown
 # markdown:    redcarpet
 
 kramdown:
-#   input: GFM
-  input: Markdown
+  input: GFM
 
   auto_ids: true
   footnote_nr: 1
@@ -115,7 +114,7 @@ kramdown:
   coderay:
     coderay_line_numbers: nil
     coderay_line_numbers_start: 1
-    coderay_tab_width: 4
+    coderay_tab_width: 2
     coderay_bold_every: 10
     coderay_css: class
 
