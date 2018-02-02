@@ -17,8 +17,9 @@ terminals emulators don't play well with control/meta keys). When using bash
 (which uses readline), a list of shortcuts it offers is obtained by entering
 "bind -P" at the command prompt.
 
-### Clearing functions
 <!-- more -->
+### Clearing functions
+
 Keyboard Commands                | Function
 -----                            | -----
 ALT-Backspace                    | removes words, not single chars. (same as CTRL+W)

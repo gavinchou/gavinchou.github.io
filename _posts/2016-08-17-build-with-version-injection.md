@@ -57,7 +57,7 @@ source file
 
 	2. ant, update version info in `build.xml` as using maven if there is one
 
-### go lang
+### golang
 
 1. define version and date variable in main.go
 
@@ -85,8 +85,8 @@ source file
 
 2. build with `-x` option
 
-	go build -o ${output_bin_name} -ldflags "-X main.version=${version} \
-		-X main.build_date=${build_date}" src/main.go || exit
+		go build -o ${output_bin_name} -ldflags "-X main.version=${version} \
+			-X main.build_date=${build_date}" src/main.go || exit
 
 ### c++
 1. use a macro to define version
