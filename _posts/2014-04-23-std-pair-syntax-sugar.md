@@ -3,6 +3,7 @@ layout: post
 title:  "std::pair<T1, T2> syntax sugar"
 date: 2014-04-23 09:15:01 +0800
 categories: experience summary c++ syntax
+tags: c++
 ---
 
 ## std::pair<T1, T2> syntax sugar

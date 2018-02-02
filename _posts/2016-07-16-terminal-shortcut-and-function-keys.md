@@ -3,6 +3,7 @@ layout: post
 title:  "terminal shortcut and function keys"
 date: 2016-07-16 14:36:57 +0800
 categories: experience summary
+tags: linux terminal
 ---
 
 ## xterm, terminal, shortcut keys, function keys
