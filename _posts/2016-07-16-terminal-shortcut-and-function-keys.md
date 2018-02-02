@@ -27,19 +27,19 @@ Backspace                        | deletes characters to the left or the cursor 
 Ctrl-7 or Ctrl-Shift--           | removes a number? of characters from the end
 Ctrl-d                           | deletes characters to the right of cursor, if no characters, logs out and closes terminal
 Ctrl-h or Ctrl-8 or Ctrl-Shift-/ | deletes characters to the left or the cursor
-Ctrl-k                           | <font color=#ff0000>**clear all characters after the cursor**</font>
+Ctrl-k                           | **clear all characters after the cursor**
 Ctrl-l                           | clear screen
-Ctrl-u                           | <font color=#ff0000>**clears all characters before the cursor**</font>
-Ctrl-w                           | <font color=#ff0000>**clears word before the cursor. a word is set of characters separated by spaces**</font>
+Ctrl-u                           | **clears all characters before the cursor**
+Ctrl-w                           | **clears word before the cursor. a word is set of characters separated by spaces**
 Delete                           | deletes characters to the right of cursor (this may vary depending on settings)
 
 ### Cursor movment
 
 Keyboard Commands | Function
 -----             | -----
-Ctrl-a or Home    | <font color=#ff0000>**returns cursor to Home, to the beginning of the line**</font>
+Ctrl-a or Home    | **returns cursor to Home, to the beginning of the line**
 Crtl-b            | movers cursor to the left (backward)
-Ctrl+e or End     | <font color=#ff0000>**Moves cursor to the end of the line**</font>
+Ctrl+e or End     | **Moves cursor to the end of the line**
 Ctrl-f            | moves cursor right (forward)
 Ctrl-n            | same as down arrow
 Ctrl-p            | same as up arrow
@@ -50,7 +50,7 @@ Ctrl-p            | same as up arrow
 Keyboard Commands | Function
 -----             | -----
 Ctrl-/            | undo: changes made to a previous command, clear current cmd typed
-`Ctrl-[`          | <font color=#ff0000>**escape, similar to Tab but not the same**</font>
+`Ctrl-[`          | **escape, similar to Tab but not the same**
 Ctrl-a            | returns cursor to Home
 Crtl-b            | movers cursor to the left (backward)
 Ctrl-c            | kill process
@@ -59,11 +59,11 @@ Ctrl-f            | moves cursor right (forward)
 Ctrl-g            | Bell (beep)
 Ctrl-i            | same as tab
 Ctrl-m or Ctrl-j  | carriage return, like enter
-Ctrl-n            | <font color=#ff0000>**next command, if there is one, same a down arrow**</font>
+Ctrl-n            | **next command, if there is one, same a down arrow**
 Ctrl-o            | Executes command without clearing the line
-Ctrl-p            | <font color=#ff0000>**previous command, like up arrow**</font>
+Ctrl-p            | **previous command, like up arrow**
 Ctrl-q            | Unlocks the screen after a XOFF signal. XON signal for software flow control.
-Ctrl-r            | <font color=#ff0000>**search: Reverse search for previous commands matching the pattern entered**</font>
+Ctrl-r            | **search: Reverse search for previous commands matching the pattern entered**
 Ctrl-s            | In effect, locks the screen (Ctrl-q unlocks it). XOFF signal for software flow control.
 Ctrl-t            | Switched the character before the cursor with the one under the cursor
 Ctrl-v            | displays next typed characters (code?)
