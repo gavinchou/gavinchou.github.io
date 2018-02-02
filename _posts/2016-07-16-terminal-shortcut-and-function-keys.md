@@ -47,10 +47,11 @@ Ctrl-p            | same as up arrow
 `Ctrl-[f (^[f)`   | move cursor forward by one word
 
 ### Other
+
 Keyboard Commands | Function
 -----             | -----
 Ctrl-/            | undo: changes made to a previous command, clear current cmd typed
-`Ctrl-[`          | **escape, similar to Tab but not the same**
+Ctrl-[            | **escape, similar to Tab but not the same**]
 Ctrl-a            | returns cursor to Home
 Crtl-b            | movers cursor to the left (backward)
 Ctrl-c            | kill process
