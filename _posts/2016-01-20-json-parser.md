@@ -14,7 +14,10 @@ the sandard is from <https://www.json.org>
 We usually use state machine to solve the string-paring problems.
 <!-- more -->
 
-![json state machine](images/json_parser_state_machine.png)
+<figure>
+	<img src="/images/json_parser_state_machine.png" alt="">
+	<figcaption>json parser</figcaption>
+</figure>
 
 ## Implementation in c++
 
