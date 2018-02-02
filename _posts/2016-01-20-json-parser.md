@@ -12,7 +12,6 @@ This is a practice of parsing a json string with c++.
 the sandard is from <https://www.json.org>
 ## State machine
 We usually use state machine to solve the string-paring problems.
-<!-- more -->
 
 <figure>
 	<img src="/images/json_parser_state_machine.png" alt="">
@@ -20,6 +19,7 @@ We usually use state machine to solve the string-paring problems.
 </figure>
 
 ## Implementation in c++
+<!-- more -->
 
 If we can prettify a json string, we have aready parsed it.
 
