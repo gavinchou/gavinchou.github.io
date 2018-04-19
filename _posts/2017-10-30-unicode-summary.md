@@ -24,6 +24,7 @@ Multilingual Plane, and a 4-byte encoding for the other planes. As long as it
 contains **no code points in the reserved range U+0D800-U+0DFFF**, a UCS-2 text
 is a valid UTF-16 text.
 
+<!-- more -->
 UTF-32 (also referred to as UCS-4) uses four bytes for each character. Like
 UCS-2, the number of bytes per character is fixed, facilitating character
 indexing; but unlike UCS-2, UTF-32 is able to encode all Unicode code points.
@@ -255,14 +256,14 @@ final String s = "\uXXXX\uYYYY"; // x is high surrogate, y is low surrogate
 ```
 
 ### reference
-unicode <https://en.wikipedia.org/wiki/Unicode>
-unicode specials <https://en.wikipedia.org/wiki/Specials_(Unicode_block)>
-utf-8 rfc3629 <https://tools.ietf.org/html/rfc3629>
-utf-8 wikipedia <https://en.wikipedia.org/wiki/UTF-8>
-unicode plane <https://en.wikipedia.org/wiki/Plane_(Unicode)>
-BMP (basic multilingual plane) <https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane>
-where is my character <http://www.unicode.org/standard/where/>
-find char by hex code point <http://www.unicode.org/charts/index.html>
-unicode converter <https://www.branah.com/unicode-converter>
-utf-16 rfc2781 <https://tools.ietf.org/html/rfc2781>
-utf-32 rfc5198 <https://tools.ietf.org/html/rfc5198>
+unicode <https://en.wikipedia.org/wiki/Unicode>  
+unicode specials <https://en.wikipedia.org/wiki/Specials_(Unicode_block)>  
+utf-8 rfc3629 <https://tools.ietf.org/html/rfc3629>  
+utf-8 wikipedia <https://en.wikipedia.org/wiki/UTF-8>  
+unicode plane <https://en.wikipedia.org/wiki/Plane_(Unicode)>  
+BMP (basic multilingual plane) <https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane>  
+where is my character <http://www.unicode.org/standard/where/>  
+find char by hex code point <http://www.unicode.org/charts/index.html>  
+unicode converter <https://www.branah.com/unicode-converter>  
+utf-16 rfc2781 <https://tools.ietf.org/html/rfc2781>  
+utf-32 rfc5198 <https://tools.ietf.org/html/rfc5198>  
