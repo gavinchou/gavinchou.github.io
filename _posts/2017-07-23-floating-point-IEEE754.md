@@ -6,7 +6,6 @@ comments: true
 categories: experience summary
 tags: encoding float
 ---
-
 #  IEEE754, floating point, conversion (representation)
 
 ### binary representation
@@ -45,10 +44,11 @@ exp 11 bits
 mantissa 52 bits
 
 ```
+
 ### IEEE754 binary to decimal
 
 ```
-given IEEE754 binary form, 32bit signle precision floating point
+given IEEE754 binary form, 32bit single precision floating point
 
 32 bits total
 sign 1 bit
@@ -95,9 +95,9 @@ mantissa 52 bits
 ```
 10.12
  ^  ^
- |  \-------------------------      /------repeat-----\
- |                            \     v                  v
- \-------------------- 1010 .  \--- 00111101011100001010 ...
+ |  \-------------------------      /------repeat-------\
+ |                            \     v                   v
+ \-------------------- 1010 .  \--- 000111101011100001010 ...
                        ^--^         ^------------------ ... ^
 read remainder bottom up|               |
                         |               |
@@ -108,7 +108,8 @@ read remainder bottom up|               |
                                    /
              /--------------------/ read integer part top down
             /
-0.24 * 2 =  | 0 .48 <-\
+0.12 * 2 =  | 0 .24 <-\
+0.24 * 2 =  | 0 .48   |
 0.48 * 2 =  | 0 .96   |
 0.96 * 2 =  | 1 .92   |
 0.92 * 2 =  | 1 .84   |
@@ -118,7 +119,7 @@ read remainder bottom up|               |
 0.72 * 2 =  | 1 .44   |
 0.44 * 2 =  | 0 .88   |
 0.88 * 2 =  | 1 .76   |
-0.76 * 2 =  | 1 .52   |-- repeat cycle, 00111101011100001010
+0.76 * 2 =  | 1 .52   |-- repeat cycle, 000111101011100001010
 0.52 * 2 =  | 1 .4    |
 0.4  * 2 =  | 0 .8    |
 0.8  * 2 =  | 0 .16   |
@@ -146,16 +147,16 @@ if __name__ == '__main__':
         b = a - 100 if a >= 100 else a
 
 hence,
-                   v------repeat------v
-(10.12)_10 = (1010.00111101011100001010...)_2
+                   v-------repeat------v
+(10.12)_10 = (1010.000111101011100001010...)_2
              nomalize
-                   v------repeat------v
-           = (1.01000111101011100001010... * 2^3)_2
+                   v-------repeat------v
+           = (1.010000111101011100001010... * 2^3)_2
 
 format with IEEE754 spec single precision
 
-           v------repeat------v
-     (1.01000111101011100001010... * 2^3)_2
+           v-------repeat------v
+     (1.010000111101011100001010... * 2^3)_2
         ^---------------------^        ^
                    |                   |
            /-------|------------------/
@@ -172,14 +173,14 @@ format with IEEE754 spec single precision
           |
           |         
        v-------v v-----------------------v
-     0 1000001|0 0100011|11010111|00001010...
-                    ^------repeat------^
+     0 1000001|0 0100001|11101011|10000101|0...
+                    ^--------repeat------^
 
 the same procedure format with IEEE754 spec double precision
 
-           v------repeat------v
-     (1.01000111101011100001010... * 2^3)_2
-        ^---------------------^        ^
+           v-------repeat------v
+     (1.010000111101011100001010... * 2^3)_2
+        ^----------------------^       ^
                    |                   |
            /-------|------------------/
           |        \
@@ -194,17 +195,16 @@ the same procedure format with IEEE754 spec double precision
      ^---------^
            |
        v----------v v-------------------------------------------------------v
-     0 1000000|0010 0100|01111010|11100001|01000111|10101110|00010100|0111101...
-                       ^------repeat-------^
+     0 1000000|0010 0100|00111101|01110000|10100011|11010111|00001010|00111101...
+                       ^-------repeat-------^
 
 ```
 
 ### floating point arithmetic
-take "add" for example
 
-10.12 => 0 10000010 01000011110101110000101
-
+TBD
 
 ### ref
 
-<https://www.youtube.com/watch?v=tx-M_rqhuUA>
+<https://www.youtube.com/watch?v=tx-M_rqhuUA>  
+<https://www.h-schmidt.net/FloatConverter/IEEE754.html>  
