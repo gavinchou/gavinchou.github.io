@@ -51,15 +51,15 @@ ol.CodeRay li { white-space: pre }
 .CodeRay .integer,
 .CodeRay .float { color: #ff658b; }
 .CodeRay .string { color: #2dc900; }
-.CodeRay .keyword { color: #66d9ef; }
+.CodeRay .keyword { color: #f92672; }
 .CodeRay .function,
 .CodeRay .class { color: #a6e22e; }
-.CodeRay .regexp,
-.CodeRay .constant,
-.CodeRay .tag { color: #f92672; }
+// .CodeRay .regexp,
+// .CodeRay .constant,
+// .CodeRay .tag { color: #f92672; }
 .CodeRay .modifier,
 .CodeRay .predefined-constant { color: #ff84e4; }
-.CodeRay .comment { color: #75715e; }
+.CodeRay .comment { color: #00e000; }
 .CodeRay .error { color: #ecc; }
 .CodeRay .content { color: #e6db74; }
 .CodeRay .delimiter { color: #e6db74; }

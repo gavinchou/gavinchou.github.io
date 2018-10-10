@@ -78,7 +78,7 @@ bing_verify:
 timezone:    China/Beijing
 locale:      en_US
 future:      true
-highlighter: rouge
+highlighter: rouge # _sass/_rouge for highlight scheme
 linenos: true
 gems:
   - jekyll-sitemap
