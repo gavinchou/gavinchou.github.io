@@ -95,7 +95,7 @@ How many ways to execute a command? Say, `ls`
 
 1. with `Enter`
 
-	```
+	```shell
 	ls<Enter>
 	```
 
@@ -106,8 +106,8 @@ How many ways to execute a command? Say, `ls`
 	```
 
 3. with `ctrl-m`
- 
- 	```
+
+	```
 	ls<ctrl-m>
 	```
 

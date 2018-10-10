@@ -23,6 +23,7 @@ We usually use state machine to solve the string-paring problems.
 
 If we can prettify a json string, we have aready parsed it.
 
+{% highlight c++ %}
 ```
 enum JsonState {
     BEGIN,
@@ -368,3 +369,4 @@ int prettify_json(const std::string& json, int indent_size, std::string* out) {
     return 0;
 }
 ```
+{% endhighlight %}

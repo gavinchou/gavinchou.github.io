@@ -79,7 +79,7 @@ timezone:    China/Beijing
 locale:      en_US
 future:      true
 highlighter: rouge
-# linenos: true
+linenos: true
 gems:
   - jekyll-sitemap
 sass:
@@ -99,13 +99,12 @@ markdown: kramdown
 
 kramdown:
   input: GFM
-
-  auto_ids: true
-  footnote_nr: 1
-  entity_output: as_char
-  toc_levels: 1..6
-  # coderay will mess up the inline code block
-#   enable_coderay: true 
+#   auto_ids: true
+#   footnote_nr: 1
+#   entity_output: as_char
+#   toc_levels: 1..6
+#   # coderay will mess up the inline code block
+#   enable_coderay: true
 #   coderay:
 #     coderay_line_numbers: true
 #     coderay_line_numbers_start: 1
