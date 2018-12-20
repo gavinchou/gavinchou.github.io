@@ -23,7 +23,7 @@ instrumentation increases processing time by about 73% and memory usage by 340%.
 For gcc or clang, the newer version the better, build with the following options
 to enable address/leak sanitizer.
 
-```
+```text
 // linux build, it does not work on mac osx
 -ggdb -fsanitize=address -fno-omit-frame-pointer -static-libstdc++ -static-libasan -lrt
 // or
@@ -53,7 +53,7 @@ use the sanitizer of gcc**
 
 memory_leak.cpp
 
-```
+```c++
 #include <iostream>
 #include <unordered_map>
 #include <string>
@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
 
 build, which will output the default executable `a.out`
 
-```
+```shell
 g++ -ggdb -fsanitize=address -fno-omit-frame-pointer -static-libstdc++ -static-libasan -lrt memory_leak.cpp
 ```
 
@@ -161,7 +161,7 @@ Report example:
 
 `-fsanitize=address`, linux `./a.out heap_leak`.
 
-```
+```text
 =================================================================
 ==15572==ERROR: LeakSanitizer: detected memory leaks
 
@@ -178,7 +178,7 @@ SUMMARY: AddressSanitizer: 40344 byte(s) leaked in 1 allocation(s).
 
 `-fsanitize=address`, linux `./a.out global_buffer_overflow`
 
-```
+```text
 =================================================================
 ==360==ERROR: AddressSanitizer: global-buffer-overflow on address 0x000001485b90 at pc 0x000000511091 bp 0x7fff0257e2d0 sp 0x7fff0257e2c8
 READ of size 4 at 0x000001485b90 thread T0
@@ -237,7 +237,7 @@ accurately, that is to say the above program may detect and report all kinds of
 For `-fsanitize=leak`, it only detects the heap memory leak, say, memory `new`ed
 but not `delete`d or access the heap memory out of range.
 
-```
+```shell
 ./a.out heap_leak
 ./a.out heap_buffer_overflow
 ```
@@ -246,7 +246,7 @@ and, the report does not distinguish that it is leak or overflow, it just says
 "detected memory leaks". I personally suppose, **need proof**, this may save
 more resource for detecting leaks than `-fsanitizer=address`.
 
-```
+```shell
 =================================================================
 ==11129==ERROR: LeakSanitizer: detected memory leaks
 
@@ -268,7 +268,7 @@ When `-fsanitize=address` turned on, some stubs, such as leak report, may be
 inserted in the output assembly code, here is a snippet of code.
 
 c++ code
-```
+```c++
 int g_a[100];
 int global_buffer_overflow() {
   std::cout << __PRETTY_FUNCTION__ << g_a[0] << std::endl;
@@ -277,7 +277,7 @@ int global_buffer_overflow() {
 ```
 
 assembly code with `-fsanitize` turned on
-```
+```asm
 global_buffer_overflow():
         push    rbp
         mov     rbp, rsp
