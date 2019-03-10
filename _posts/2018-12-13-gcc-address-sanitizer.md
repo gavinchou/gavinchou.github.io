@@ -11,6 +11,7 @@ time: 2018-12-13-Thu 21:38:55
 
 `AddressSanitizer` (detects addressability issues, including leaks) and
 `LeakSanitizer` (detects memory leaks)
+<!-- more -->
 
 `AddressSanitizer` (or ASan) is an open source programming tool by Google that
 detects memory corruption bugs such as buffer overflows or accesses to a
@@ -34,7 +35,7 @@ to enable address/leak sanitizer.
 // or
 -ggdb -fsanitize=leak -fno-omit-frame-pointer -static-libstdc++ -static-libgcc memory_leak.cpp
 ```
-<!-- more -->
+
 options explanation:  
 * `-ggdb` and `-fno-omit-frame-pointer`, enable the call stack and line number
 	for better report format to locate bug in user code
