@@ -100,7 +100,7 @@ However, we can simplify initialization of
 > Initializer lists may be implemented as a pair of pointers or pointer and
 > length. Copying a std::initializer_list does not copy the underlying objects.
 
-The `initializer_list` template only accept only one type `T`, it's usually used
+The `initializer_list` template only accepts a type `T`, it's usually used
 for container initialization.
 
 `std::vector` has a constructor of `std::initlizaer_list`, possible
@@ -237,8 +237,8 @@ void test_emplace() {
 ```
 
 We should **explicitly** "declare" what the `<brace-enclosed initializer list>`
-is in the template function, be aware of that the following is
-**not a type cast**, it's just like a "declaration" to specify the type/use of
+is in the template function, be aware of that the following statements are
+**not type cast**, it's just like a "declaration" to specify the type/use of
 that initializer list.
 
 ```cpp
@@ -247,7 +247,7 @@ that initializer list.
 ```
 
 The above code is something more like `(void) a; // avoid unused waring`,
-it can also be written as
+it can also be simply written as
 
 ```cpp
 std:initializer_list<std::string> {"10", "20"}
