@@ -275,4 +275,4 @@ static_cast<Range>({"10", "20"})
 
 <https://stackoverflow.com/questions/24550924/emplacement-of-a-vector-with-initializer-list>  
 <https://en.cppreference.com/w/cpp/language/list_initialization>  
-<https://en.cppreference.com/w/cpp/language/list_initialization>  
+<https://en.cppreference.com/w/cpp/utility/initializer_list>  
