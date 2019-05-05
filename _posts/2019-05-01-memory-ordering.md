@@ -6,6 +6,9 @@ categories: summary c++
 tags: C++ C++11 memory-order lock-free atomic
 ---
 
+* This will become a table of contents (this text will be scraped).
+{:toc}
+
 ## Preface
 
 Memory ordering describes the order of accesses to computer memory by a CPU. The
