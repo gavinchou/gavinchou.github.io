@@ -55,9 +55,9 @@ the most important caches mentioned above), such as the translation lookaside
 buffer (TLB) that is part of the memory management unit (MMU) that most CPUs
 have.
 
-<img src="images/memory-ordering/cpu_structure.png" width="500"/>
+<img src="/images/memory-ordering/cpu_structure.png" width="500"/>
 <a name="figure 1"/>figure 1. general CPU architecture
-<img src="images/memory-ordering/Itanium_architecture.png" width="500"/>
+<img src="/images/memory-ordering/Itanium_architecture.png" width="500"/>
 <a name="figure 2"/>figure 2. Itanium architecture CPU architecture
 
 以上描述摘自[wikipedia](#introduction of CPU cache on wikipedia), 图来自google,
@@ -89,9 +89,9 @@ Cache row entries usually have the following structure:
 The data block (cache line) contains the actual data fetched from the main
 memory.
 
-<img src="images/memory-ordering/cpu_cache_line.gif" width="500"/>
+<img src="/images/memory-ordering/cpu_cache_line.gif" width="500"/>
 <a name="figure 3"/>figure 3. CPU cache line
-<img src="images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>
+<img src="/images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>
 <a name="figure 4"/>figure 4. CPU cache line data layout
 
 figure 4 shows a block of cache with 4k cache entries with 16bytes(128bit) cache
@@ -168,7 +168,7 @@ multiple local caches. When clients in a system maintain caches of a common
 memory resource, problems may arise with incoherent data, which is particularly
 the case with CPUs in a multiprocessing system.
 
-<img src="images/memory-ordering/cache_coherence.gif" width="500"/>
+<img src="/images/memory-ordering/cache_coherence.gif" width="500"/>
 <a name="figure 5"/>figure 5. cache coherent
 
 figure 5, from wikipedia, 展示了cache coherence的大概过程 cache coherence 就是讲
@@ -708,7 +708,7 @@ are guaranteed.
 > prevent memory reordering of the read-acquire with any read or write operation
 > that follows it in program order.
 
-<img src="images/memory_ordering/acqurie_semantic.png" width="500"/>
+<img src="/images/memory_ordering/acqurie_semantic.png" width="500"/>
 
 `acquire`和`release`是配对的, 硬件层面, 这个语义(也许是一条CPU
 instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内存的load操作都看到的
@@ -732,7 +732,7 @@ instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内�
 > prevent memory reordering of the write-release with any read or write
 > operation that precedes it in program order.
 
-<img src="images/memory_ordering/release_semantic.png" width="500"/>
+<img src="/images/memory_ordering/release_semantic.png" width="500"/>
 
 `release samentic`和字面意思很像.
 硬件层面, 这个语义(也许是一条CPU instruction)在执行这个
@@ -795,7 +795,7 @@ reordering和runtime reordering.
 consistency的, 那么最终的执行顺序是类似左边中的一种, 但是绝对不会是类似于最右边
 的那种, 并且对于每个线程, 最终看到的执行顺序也只有一种--各个线程(核)达成一致.
 
-<img src="images/memory-ordering/sequential_consistency.png" width="500"/>
+<img src="/images/memory-ordering/sequential_consistency.png" width="500"/>
 <a name="figure 6"/>
 figure 6. shows that what is sequential consistency and what is not
 
@@ -1069,7 +1069,7 @@ multi-thread environment, we just need to know that:
 * happens-before
 	inter thread order description
 
-<img src="images/memory-ordering/synchronize_with_and_sequence_before.png" width="500"/>
+<img src="/images/memory-ordering/synchronize_with_and_sequence_before.png" width="500"/>
 
 Michael Wong's slides shows the idea of sequenced-before + memory-ordering to
 implement happens-before and synchronizes-with.
