@@ -58,7 +58,7 @@ the most important caches mentioned above), such as the translation lookaside
 buffer (TLB) that is part of the memory management unit (MMU) that most CPUs
 have.
 
-<img src="/images/memory-ordering/cpu_structure.png" width="500"/>  
+<img src="/images/memory-ordering/cpu_structure.png" width="300"/>  
 <a name="figure 1"/>figure 1. general CPU architecture
   
 <img src="/images/memory-ordering/Itanium_architecture.png" width="500"/>  
@@ -93,12 +93,10 @@ Cache row entries usually have the following structure:
 The data block (cache line) contains the actual data fetched from the main
 memory.
 
-<img src="/images/memory-ordering/cpu_cache_line.gif" width="500"/>
-  
+<img src="/images/memory-ordering/cpu_cache_line.gif" width="300"/>  
 <a name="figure 3"/>figure 3. CPU cache line
   
-<img src="/images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>
-  
+<img src="/images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>  
 <a name="figure 4"/>figure 4. CPU cache line data layout
 
 figure 4 shows a block of cache with 4k cache entries with 16bytes(128bit) cache
@@ -406,7 +404,11 @@ void test() {
 <a name="code 3"/>
 code 3. simulate runtime reordering with 2 threads
 
-**但, 遗憾的是, 这个基本上捕获不到runtime reordering**, 因为
+**但, 遗憾的是, 这段代码在Intel x86-64上是捕获不到runtime reordering的**, 因为
+Intel x86-64[限制](#Intel x86-64 family reordering specification)
+了这种重排, 就是说CPU 并不会对这两句进行重排.
+
+如果是在其他类型的CPU上执行上述代码, 也比较难捕获到runtime reordering, 因为
 
 ```c++
 msg = 10086;
@@ -420,7 +422,7 @@ ready = 1;
 我们利用赋值顺序的结果来观察, 不直接观察中间状态, "抓拍"到runtime reordering的机
 会就会大很多
 
-一个典型的例子
+一个典型的例子, 也可以再x86-64平台上跑
 
 ```
 // the static instruction stream (compiled object)
@@ -437,8 +439,8 @@ X, Y是内存地址, r1, r2是寄存器, 两个线程执行的汇编代码过程
 以上汇编在本各自的线程(核)看来先执行load或者store操作都是可以的, 都不违反指令重
 排的[基本原则](#principle of instruction reordering).
 
-If CPU instruction reordering occurs in both threads, that is to say
-`r1 == r2 == 0`, the execution order is
+X, Y are both initially zero, if CPU instruction reordering occurs in both
+threads, that is to say `r1 == 0 && r2 == 0`, the execution order is
 
 ```
   thread1                      thread2
@@ -451,7 +453,7 @@ mov [_X], 1                  mov [_Y], 1
 fence to prevent reordering**, I will talk this later in
 [Intel's reordering specification](#Intel x86-64 family reordering specification).
 
-可以用如下代码来进行模拟, click [here](bj.bcebos.com/tafdb-bj/runtime_reordering.cpp)
+可以用如下代码来进行模拟, click [here](https://github.com/gavinchou/memory-order/blob/master/src/runtime_reordering.cpp)
 for full source code. 使用gcc 4.8.2以上版本或者对应的clang版本, 编译选项如下.
 
 ```shell
@@ -1184,7 +1186,7 @@ We can conclude the strength of constraints of the memory ordering as follows:
                  /                                \
      relaxed --->                                  ---> acq_res ---> seq_cst
                  \                                /
-                  \---> consume ---> acquired ---/
+                  \---> consume ---> acquire ----/
 
 an arrow A -> B means constraint of B is stronger than A
 ```
@@ -1236,10 +1238,13 @@ void foo() {
 }
 ```
 
-Note that every `consume` and be replaced with `acquired`, but not vice versus,
+Note that every `consume` and be replaced with `acquire`, but not vice versus,
 the data dependency is some time hard to figure out, and don't be clever when
-you don't fully understand the consequences by replacing `acquired` with
+you don't fully understand the consequences by replacing `acquire` with
 `consume` if you think it "may" improve the performance.
+
+`consume` in most cases is a compiler option, the code gen is almost the same as
+`acquire`, `consume` is a compiler optimization option only.
 
 -----
 
@@ -1384,16 +1389,15 @@ specified var is "atomic", no partial write or read will happen.
 
 And also, note that
 
-* in .NET and Java key word `volatile` ensures sequential-consistency memory
+* in .NET and Java key word `volatile` ensures sequentiall consistent memory
 	order, kind of like `atomic` with default memory order in C++
 * C++ `std::atomic` default memory order is sequential-consistency we can weaken
 	that, but I didn't find out how to do that with `volatile` in .NET or Java.
 
 ## Code generation
 
-gcc 8.2 with `-std=c++17 -O3`, Intel's instruction set.
+gcc 8.2, 8.2, 6.3, 5.4 with `-std=c++17 -O3`
 
-gcc 8.2 8.2 6.3 5.4
 ```c++
 int a = 10;
 int b = 10;
@@ -1442,9 +1446,21 @@ atomic.fetch_add(relaxed)               | lock add     | ldxr;add;stxr;cbnz\*   
 
 `*` means there is a loop
 
+x86-64's code genertation is much simpler compared to the rest, but there is no
+free lunch, the `lock` instruction locks the whole bus, it's very expensive.
+
+With stronger constraints, comes less flexibility to optimize.
+
+There is no free lunch for ARM, POWER and MIPS too.
+Although they are weaker than x86-64 and more flexible, however, it's easier to
+write buggy code while doing optimization.
+
+-----
+
 ## Lock-free programming
 
-Examples and usage of atomics and memory ordering
+Definition, examples of lock-free programming, and usage of atomics and memory
+ordering for lock-free.
 
 ### Definition, what is lock free
 
