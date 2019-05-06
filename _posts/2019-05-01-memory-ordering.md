@@ -1462,6 +1462,13 @@ write buggy code while doing optimization.
 Definition, examples of lock-free programming, and usage of atomics and memory
 ordering for lock-free.
 
+Lock-free programming is doing trick with CAS at most of time, we need to
+consider all of the corner cases under concurrent situations.
+
+In my point of view, **it's the key factor to ensure your lock-free program is
+correct iff what you operate is what you want to operate, even if it keeps
+changing all the time**
+
 ### Definition, what is lock free
 
 Strengths of lock-freedom
@@ -1609,11 +1616,201 @@ Singleton* Singleton::get_instance() {
 What's more,
 
 ### Lock-free queue
-brute force lock-free linked list, no pop
-fixed size vector with atomic cursor and semaphore
+
+"Brute-force" lock-free singly-linked list, no pop.
+
+Fixed size vector with atomic cursor and semaphore, one-to-many
+producer-consumer pattern.
+
+#### Lock-free singly-linked list
+
+```c++
+template <typename T>
+class slist {
+public:
+  slist();
+  ~slist();
+  void push_front(const T& t);
+  void pop_front();
+private:
+  struct Node {
+    T t;
+    Node* next;
+  }
+  atomic<Node*> head {nulllptr};
+};
+```
+Constructor doesn't need to do anything, but destructor need to recycle
+internal nodes.
+
+Destructor
+
+```c++
+template<typename T>
+slist<T>::~slist() {
+  auto first = head.load();
+  while (first != nullptr) {
+    auto unliked = first;
+    first = first-next;
+    delete unliked;
+  }
+}
+```
+
+`push_front()` is easy with atomic weapons, to deal with concurrent insertions,
+we just need to prepend to the head we see exactly with CAS.
+
+```c++
+template<typename T>
+void slist<T>::push_front(const T& t) {
+  auto p = new Node;
+  p->t = t;
+  p->next = head;
+  // spin until success
+  // try to prepend to head when we see the head
+  while (!head.compare_exchange_weak(p->next, p)) { }
+}
+```
+
+`pop_front()` is that easy too?
+
+```c++
+template<typename T>
+void slist<T>::pop_front() {
+  auto p = head.load(); // load once
+  // spin until success
+  // move head pointer "backwards" if we see the head
+  while (p != nullptr
+         && !head.compare_exchange_weak(p, p->next)) { }
+  delete p; // delete may be not necessary
+            // expose p to user as a return val
+}
+```
+
+It seems that works fine, but there is ABS problem:
 
 
+```
+Initial state:
+  +------+    +-------+    +-------+    +-------+    +-------+
+  | head o--->| addr5 o--->| addr4 o--->| addr3 o--->| addr2 o--->
+  +------+    +-------+    +-------+    +-------+    +-------+
 
+Modify the list:
+
+   |     Thread 1                Thread 2                    Thread3
+   |     // pop                  // pop                      // push
+   t
+   i     head = 5
+   m t1 -------------------------------------------------------------
+   e                             head = 5
+                                 CAS(5, 4)
+   l t2 -------------------------------------------------------------
+   i                                                         push 9
+   n                                                         push 5
+   e t2 -------------------------------------------------------------
+   |     CAS(5, 4)
+   | t4 -------------------------------------------------------------
+   v
+
+t4:
+  +------+    +=======+    +=======+    +-------+    +-------+    +-------+
+  | head o    | addr5'o--->| addr9 o--->| addr4 o--->| addr3 o--->| addr2 o--->
+  +---o--+    +=======+    +=======+    +-------+    +-------+    +-------+
+       \                                    ^
+        \__________________________________/
+
+```
+
+Herb gives us some hints to solve the ABA problem
+
+> We need to solve the ABA issue: Two nodes with the same address, but different
+> identities (existing at different times).
+> 
+> 1. Option 1: Use lazy garbage collection.
+> 	* Solves the problem. Memory can't be reused while pointers to it exist.
+> 	* But: Not an option (yet) in portable C++ code, and destruction of nodes
+> 		becomes nondeterministic.
+> 2. Option 2: Use reference counting (garbage collection).
+> 	* Solves the problem in cases without cycles. Again, avoids memory reuse.
+> 3. Option 3: Make each pointer unique by appending a serial number, and
+> 	 increment the serial number each time it's set.
+> 	* This way we can always distinguish between A and A'.
+> 	* But: Requires an atomic compare-and-swap on a value that's larger than the
+> 		size of a pointer. Not available on all hardware & bit-nesses.
+> 4. Option 4: Use hazard pointers.
+> 	* Maged Michael and Andrei Alexandrescu have covered this in detail.
+> 	* But: It's very intricate. Tread with caution.
+
+But I still don't understand despite avoiding recycling memory in time, there
+are other way to resolve this address ABA problem?
+
+There is an [attempt](https://nullprogram.com/blog/2014/09/02/) in option 3
+written in C11, apparently this attempt has hardware limitation.
+
+To make this list pop single element is not that easy, I will fix this in the
+future post, to get rid of ABA, we may also first pop all the elements at once?
+
+```c++
+template<typename T>
+auto slist<T>::pop_all() {
+  return head.exchange(nullptr);
+}
+```
+-----
+
+### shared_ptr ref_count
+
+Bug mentioned by Herb in his talk [atomic weapons](#Herb Sutter - atomic Weapons).
+
+The correct one for shared ptr's reference counting.
+
+Increment
+
+```c++
+control_block_ptr = other->control_block_ptr;
+control_block_ptr->refs.fetch_add(1, memory_order_relaxed);
+```
+
+Decrement
+
+```c++
+if (control_block_ptr->refs
+      .fetch_sub(1, memory_order_acq_rel)) { // key
+  delete control_block_ptr;
+}
+```
+
+Increment can be relaxed (not a publish operation).
+Decrement can be acq_rel (both acq+rel necessary, probably sufficient)
+
+VS2012's bug with ARM architecture (x86 is much stronger)
+
+```c++
+if (control_block_ptr->refs
+      .fetch_sub(1, memory_order_release)) { // buggy
+  delete control_block_ptr;
+}
+```
+
+e.g
+
+```
+// Thread 1, 2->1                      |    // Thread 2, 1 -> 0
+if (control_block_ptr->refs            |    if (control_block_ptr->refs
+      .fetch_sub(                      |          .fetch_sub(
+        1, memory_order_release)) {    |            1, memory_order_release)) {
+  // branck not taken                  |       delete control_block_ptr; // B
+}                                      |    }
+                                       |   
+```
+
+The explaination given by Herb Sutter
+
+> * No acquire/release => no coherent communication guarantee that thread 2 sees
+> 	thread 1’s writes in the right order. To thread 2, line A could appear to
+> 	move below thread 1’s decrement even though it’s a release(!).
+> * Release doesn’t keep line B below decrement in thread 2.
 
 ### shared_ptr ref_count
 
