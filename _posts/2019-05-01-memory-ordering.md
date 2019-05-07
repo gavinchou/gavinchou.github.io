@@ -29,34 +29,16 @@ This post covers the following questions
 <a name="CPU cache"/>
 ## CPU cache
 
-A CPU cache is a hardware cache used by the central processing unit (CPU) of
-a computer to reduce the average cost (time or energy) to access data from the
-main memory. A cache is a smaller, faster memory, closer to a processor core,
-which stores copies of the data from frequently used main memory locations. Most
-CPUs have different independent caches, including instruction and data caches,
-where the data cache is usually organized as a hierarchy of more cache levels
-(L1, L2, L3, L4, etc.).
+> A CPU cache is a hardware cache used by the central processing unit (CPU) of a
+> computer to reduce the average cost (time or energy) to access data from the
+> main memory. A cache is a smaller, faster memory, closer to a processor core,
+> which stores copies of the data from frequently used main memory locations.
+> Most CPUs have different independent caches, including instruction and data
+> caches, where the data cache is usually organized as a hierarchy of more cache
+> levels (L1, L2, L3, L4, etc.).
+> ...
+
 <!-- more -->
-
-All modern (fast) CPUs (with few specialized exceptions) have multiple levels
-of CPU caches. The first CPUs that used a cache had only one level of cache;
-unlike later level 1 caches, it was not split into L1d (for data) and L1i (for
-instructions). Almost all current CPUs with caches have a split L1 cache. They
-also have L2 caches and, for larger processors, L3 caches as well. The L2 cache
-is usually not split and acts as a common repository for the already split L1
-cache. Every core of a multi-core processor has a dedicated L2 cache and is
-usually not shared between the cores. The L3 cache, and higher-level caches, are
-shared between the cores and are not split. An L4 cache is currently uncommon,
-and is generally on dynamic random-access memory (DRAM), rather than on static
-random-access memory (SRAM), on a separate die or chip. That was also the case
-historically with L1, while bigger chips have allowed integration of it and
-generally all cache levels, with the possible exception of the last level. Each
-extra level of cache tends to be bigger and be optimized differently.
-
-Other types of caches exist (that are not counted towards the "cache size" of
-the most important caches mentioned above), such as the translation lookaside
-buffer (TLB) that is part of the memory management unit (MMU) that most CPUs
-have.
 
 <img src="/images/memory-ordering/cpu_structure.png" width="300"/>  
 <a name="figure 1"/>figure 1. general CPU architecture
@@ -77,23 +59,23 @@ have.
 
 ### Cache line
 
-Data is transferred between memory and cache in blocks of fixed size, called
-cache lines or cache blocks. When a cache line is copied from memory into the
-cache, a cache entry is created. The cache entry will include the copied data as
-well as the requested memory location (called a tag).
+> Data is transferred between memory and cache in blocks of fixed size, called
+> cache lines or cache blocks. When a cache line is copied from memory into the
+> cache, a cache entry is created. The cache entry will include the copied data
+> as well as the requested memory location (called a tag).
 
 Cache row entries usually have the following structure:
 
 ```
-+---------+---+-------------+
-|flag bits|tag|data block(s)|
-+---------+---+-------------+
++---------------+---------+-------------------+
+|   flag bits   |   tag   |   data block(s)   |
++---------------+---------+-------------------+
 ```
 
 The data block (cache line) contains the actual data fetched from the main
 memory.
 
-<img src="/images/memory-ordering/cpu_cache_line.png" width="300"/>  
+<img src="/images/memory-ordering/cpu_cache_line.png" width="400"/>  
 <a name="figure 3"/>figure 3. CPU cache line
   
 <img src="/images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>  
@@ -107,8 +89,11 @@ implementations such as: set associative cache, column associative cache. Check
 在"direct mapped cache"的实现中, cache entry就是CPU cache(L1, L2, L3)上一小段
 连续的内存, cache entry从左到又3个字段分别为
 * valid: 该entry是否有效
-* tag: cache里的key, 实际上就是address
-* data: cache line data
+* tag: cache里的key, 一般来说就是address的一部分
+* data: cache line data, data部分一般由多个block组成, 这样可以只更新cache line中
+	部分数据, 通 address的末尾若干位(byte offset)来选取(Mux, multiplexer)其中的某
+	个具体的data block
+* data block: 一个data block的大小, 一般和机器的字长是一样的: 32bit or 64-bit
 
 CPU一个core和另外一个core 或者内存的交互是通过cache entry来同步, 也就
 是说CPU的内存操作粒度是cache line. 这么做是为了提升效率, 目前来说一般x86 CPU的
@@ -126,19 +111,19 @@ cache line的实现是比较有意思的, 如上所述, 这里都是硬件电路
 
 ### Replacement policies
 
-To make room for the new entry on a cache miss, the cache may have to evict one
-of the existing entries. The heuristic it uses to choose the entry to evict is
-called the replacement policy. The fundamental problem with any replacement
-policy is that it must predict which existing cache entry is least likely to be
-used in the future. Predicting the future is difficult, so there is no perfect
-method to choose among the variety of replacement policies available. One
-popular replacement policy, least-recently used (LRU), replaces the least
-recently accessed entry.
+> To make room for the new entry on a cache miss, the cache may have to evict
+> one of the existing entries. The heuristic it uses to choose the entry to
+> evict is called the replacement policy. The fundamental problem with any
+> replacement policy is that it must predict which existing cache entry is least
+> likely to be used in the future. Predicting the future is difficult, so there
+> is no perfect method to choose among the variety of replacement policies
+> available. One popular replacement policy, least-recently used (LRU), replaces
+> the least recently accessed entry.
 
-Marking some memory ranges as non-cacheable can improve performance, by avoiding
-caching of memory regions that are rarely re-accessed. This avoids the overhead
-of loading something into the cache without having any reuse. Cache entries may
-also be disabled or locked depending on the context.
+> Marking some memory ranges as non-cacheable can improve performance, by
+> avoiding caching of memory regions that are rarely re-accessed. This avoids
+> the overhead of loading something into the cache without having any reuse.
+> Cache entries may also be disabled or locked depending on the context.
 
 一般来说就是CPU cache很小, 比较好的CPU总共才几十MB, 能mirror(映射)的内存非常有限
 , 需要在后续有新 的内存要进到cache line按需将之前的一些cache line替换掉, 常用的
@@ -146,19 +131,19 @@ also be disabled or locked depending on the context.
 
 ### Write policies
 
-If data is written to the cache, at some point it must also be written to main
-memory; the timing of this write is known as the write policy. In a
-write-through cache, every write to the cache causes a write to main memory.
-Alternatively, in a write-back or copy-back cache, writes are not immediately
-mirrored to the main memory, and the cache instead tracks which locations have
-been written over, marking them as dirty. The data in these locations is written
-back to the main memory only when that data is evicted from the cache. For this
-reason, a read miss in a write-back cache may sometimes require two memory
-accesses to service: one to first write the dirty location to main memory, and
-then another to read the new location from memory. Also, a write to a main
-memory location that is not yet mapped in a write-back cache may evict an
-already dirty location, thereby freeing that cache space for the new memory
-location.
+> If data is written to the cache, at some point it must also be written to main
+> memory; the timing of this write is known as the write policy. In a
+> write-through cache, every write to the cache causes a write to main memory.
+> Alternatively, in a write-back or copy-back cache, writes are not immediately
+> mirrored to the main memory, and the cache instead tracks which locations have
+> been written over, marking them as dirty. The data in these locations is
+> written back to the main memory only when that data is evicted from the cache.
+> For this reason, a read miss in a write-back cache may sometimes require two
+> memory accesses to service: one to first write the dirty location to main
+> memory, and then another to read the new location from memory. Also, a write
+> to a main memory location that is not yet mapped in a write-back cache may
+> evict an already dirty location, thereby freeing that cache space for the new
+> memory location.
 
 因为CPU各个core和内存之间存在cache, 这里就涉及到cache line变更之后何时
 写到内存里, 简单的办法是更新cache line的时候就直接往内存里更新对应数据(不考虑
@@ -188,15 +173,22 @@ cache line的值都能达到一致的状态, 这个有点类似于分布式中�
 说到这个cache coherence, 一般人都会有以下两个疑问:
 
 > 1. Two cores try to modify the same cache line "simultaneously". Who will win?
->    Can both lose? How does intel implementatio handle this case?
+> 	 Can both lose? How does intel implementatio handle this case?
 > 2. One core try to read from a memory location which is not in cache while
->    another one has exclusive ownership of a cache line with this memory
->    location and try to write some value into it (simultaneously). Who will
->    win? The cache line state will first transfered to a Shared state and then
->    invalidated or Modified and then Shared?
+> 	 another one has exclusive ownership of a cache line with this memory
+> 	 location and try to write some value into it (simultaneously). Who will
+> 	 win? The cache line state will first transfered to a Shared state and then
+> 	 invalidated or Modified and then Shared?
 
 这个东西很难, 但是看起来这两个问题对Intel来说很轻松就做到了?
-这是一个大神对以上问题的[解答](#how intel cache coherence works)
+这是一个专家对以上问题的[解答](#how intel cache coherence works)
+
+### Conclusion of CPU cache
+
+CPU cache加快了执行的速度, 但是也引入了额外的使用问题, CPU cache本身的实现逻辑就
+很复杂, 即使实现了cache coherence, 只要有cache 的存在在多个核共同工作的环境下还
+是会有各个核对内存可见性的问题, 再加上编译器和CPU的优化, 问题就显得更加复杂了,
+我们使用高级语言所写的程序到真正执行的时候也许已经不是我们想象的那样了.
 
 ## Instruction reordering
 
@@ -557,6 +549,12 @@ gotcha! 5516 reorders detected after 580264 iterations
 **This section first introduces what kind of runtime reordering is allowed and
 what is not, and then introduce some critical for core/cache synchronization.**
 
+Most of the content is copied from [Intel's developer manual volume 3 §8.2](#intel volume 3),
+hence, quotation is omitted in this section.
+I put it here not only for a reference purpose but also for a demo of
+[hardware memory model](#hardware memory models).
+x86-64 is the most popular processor, it can be a representative for other CPUs.
+
 -----
 
 Different CPU architectures  have different
@@ -718,7 +716,7 @@ are guaranteed.
 > prevent memory reordering of the read-acquire with any read or write operation
 > that follows it in program order.
 
-<img src="media/memory-ordering/acquire_semantics.png" width="500"/>  
+<img src="/images/memory-ordering/acquire_semantics.png" width="500"/>  
 
 `acquire`和`release`是配对的, 硬件层面, 这个语义(也许是一条CPU
 instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内存的load操作都看到的
@@ -742,7 +740,7 @@ instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内�
 > prevent memory reordering of the write-release with any read or write
 > operation that precedes it in program order.
 
-<img src="media/memory-ordering/release_semantics.png" width="500"/>  
+<img src="/images/memory-ordering/release_semantics.png" width="500"/>  
 
 `release samentic`和字面意思很像.
 硬件层面, 这个语义(也许是一条CPU instruction)在执行这个
