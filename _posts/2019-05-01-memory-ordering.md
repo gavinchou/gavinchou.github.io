@@ -68,7 +68,7 @@ have.
 描述和图应该讲的比较清楚对CPU/CPU cache有了大概的认识, 核心的几个点:
 1. L1分为data部分(L1d)和instruction部分(L1i), 用途就是字面意思, 目前一般来说是
 	 32KB 大小, 采用static memory, 速度最快(也最贵), 最接近CPU的速度.
-2. 大小`L1 < L2 < L3`, 速度`L1 > L2 > L1`, 查找顺序`L1 > L2 > L3`
+2. 大小`L1 < L2 < L3`, 速度`L1 > L2 > L3`, 查找顺序`L1 > L2 > L3`
 2. L3以及更高level的cache就是若干个核共享的cache
 4. 现代CPU基本都是多核, 每个核有自己的cache(local cache), 增强了性能也引入了
 	 额外的**使用复杂性**
@@ -93,7 +93,7 @@ Cache row entries usually have the following structure:
 The data block (cache line) contains the actual data fetched from the main
 memory.
 
-<img src="/images/memory-ordering/cpu_cache_line.gif" width="300"/>  
+<img src="/images/memory-ordering/cpu_cache_line.png" width="300"/>  
 <a name="figure 3"/>figure 3. CPU cache line
   
 <img src="/images/memory-ordering/cpu_cache_line_data_layout.jpg" width="500"/>  
@@ -122,7 +122,7 @@ One more thing, 如果对数据结构做了alignment, 在一些频繁内存acces
 
 cache line的实现是比较有意思的, 如上所述, 这里都是硬件电路, 我们可以根据已有的算
 法直接用数字逻辑电路(FPGA等)来实现一个类似这样的cache, [这里](https://github.com/ronak66/Direct-Mapped-Cache)
-是github上开源的一个"direct mapped cache"verlog的实现, 感兴趣可以作为延伸阅读.
+是github上开源的一个"direct mapped cache"verilog的实现, 感兴趣可以作为延伸阅读.
 
 ### Replacement policies
 
@@ -160,7 +160,7 @@ memory location that is not yet mapped in a write-back cache may evict an
 already dirty location, thereby freeing that cache space for the new memory
 location.
 
-因为CPU各个core和内存之间在cache存在在cache, 这里就涉及到cache line变更之后何时
+因为CPU各个core和内存之间存在cache, 这里就涉及到cache line变更之后何时
 写到内存里, 简单的办法是更新cache line的时候就直接往内存里更新对应数据(不考虑
 和其他core的cache的交互, 后续有介绍), 这样最简单但是效果不一定最好, 另外有一些
 方法比如`write-back`, `copy-back`, 选个合适的时机(比如说cache line淘汰, 有新的
@@ -173,7 +173,7 @@ multiple local caches. When clients in a system maintain caches of a common
 memory resource, problems may arise with incoherent data, which is particularly
 the case with CPUs in a multiprocessing system.
 
-<img src="/images/memory-ordering/cache_coherence.gif" width="500"/>
+<img src="/images/memory-ordering/cache_coherence.gif" width="500"/>  
   
 <a name="figure 5"/>figure 5. cache coherent
 
@@ -702,9 +702,9 @@ are guaranteed.
 ## Acquire and Release semantics
 
 先总结什么是Acquire and Release semantics:  
-* acquire semantic, 硬件层面就是保证在此之后的所有指令在执行的时候都不能重排到这
+* acquire semantics, 硬件层面就是保证在此之后的所有指令在执行的时候都不能重排到这
 	个指令之前, 软件层面在此之后的所有操作都不能重排到这个语义(fence)之前
-* release semantic, 硬件层面就是保证在此之前的所有store都已经"release"可见,
+* release semantics, 硬件层面就是保证在此之前的所有store都已经"release"可见,
 	软件层面在此之前的所有操作都不能重排到这个语义(fence)之后
 
 这个概念是对各个核对内存的变更在其他核的可见性, 这个也是和[CPU cache](#CPU cache)
@@ -718,8 +718,7 @@ are guaranteed.
 > prevent memory reordering of the read-acquire with any read or write operation
 > that follows it in program order.
 
-<img src="/images/memory_ordering/acqurie_semantic.png" width="500"/>
-  
+<img src="media/memory-ordering/acquire_semantics.png" width="500"/>  
 
 `acquire`和`release`是配对的, 硬件层面, 这个语义(也许是一条CPU
 instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内存的load操作都看到的
@@ -743,7 +742,7 @@ instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内�
 > prevent memory reordering of the write-release with any read or write
 > operation that precedes it in program order.
 
-<img src="/images/memory_ordering/release_semantic.png" width="500"/>
+<img src="media/memory-ordering/release_semantics.png" width="500"/>  
 
 `release samentic`和字面意思很像.
 硬件层面, 这个语义(也许是一条CPU instruction)在执行这个
@@ -875,7 +874,7 @@ C++ 11默认的memory model就是sequential consistency, I will talk about this
 [later](#cross ref needed).
 
 
-Herb给了两个个更加直观简单例子来描述SC, 不管执行顺序如何, 全局所有线程看到一个共
+Herb给了两个更加直观简单例子来描述SC, 不管执行顺序如何, 全局所有线程看到一个共
 同的顺序(total order)
 
 Transitivity/causality: x and y are std::atomic, all variables initially zero.
@@ -1041,34 +1040,38 @@ underlying implementation of locks/mutexes usually introduces low-level full
 memory fences, and also work as a full fence at runtime -- nothing can pass the
 lock.
 
-Briefly speaking, lock -- acquire semantic, unlock -- release semantic.
+Briefly speaking, lock -- acquire semantics, unlock -- release semantics.
 
 ```c++
   std::unique_lock<std::mutex> lock(mtx);
 
   lock.lock();  // nothing following in the critical section reordered
-                // above this lock(), acquire semantic
+                // above this lock(), acquire semantics
 
   // critical section
   ...
 
   lock.unlock(); // nothing prior in the critical section reordered
-                 // past this unlock(), release semantic
+                 // past this unlock(), release semantics
 ```
 
 ### Memory Fences
 
-以我个人理解Memory Fence和Memory Barrier是同个意思, 中文翻译应该都叫内存屏障
+Memory Fence和Memory Barrier其实是同个意思, 中文翻译应该都叫内存屏障
 (叫内存栅栏好像有点不那么顺口:smirk:), 只是英文叫法不一样,
 看多了Linux内核的人可能更加习惯叫barrier, 但是我更习惯叫Memory Fence, 因为相关的
 汇编指令就叫fence.
 
-在之前的[code 4](#code 4)和[code 2b](#code 2b), 我们已经展示了如何通过添加语
-句`asm volatile("" ::: "memory")`(汇编)/`std::atomice_thread_fence`(C++11)来限制
-编译期的reordering.
+在之前的[code 4](#code 4)和[code 2b](#code 2b), 我们已经展示了从**编程语言层面**
+如何通过添加语句`asm volatile("" ::: "memory")`(汇编, 关于gcc `asm`使用的说明在
+[这里](https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html))
+或者`std::atomice_thread_fence`(C++11)来限制编译期(乃至运行期)的reordering.
 
-关于gcc `asm`使用的说明在[这里](https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html).
+语言层面对于memory fence这个概念的抽象和支持, 将会在[接下来的章节](#memory model of c++11)
+详细阐述, 一个好的抽象可以非常好地实现memory fence并且在各种场景下得到很好的优化
+.
 
+<a name="synchronizes-with relation"/>
 ## Synchronizes-with relation
 
 The following concepts are used to describe sequence of each operation in
@@ -1087,7 +1090,8 @@ multi-thread environment, we just need to know that:
 Michael Wong's slides shows the idea of sequenced-before + memory-ordering to
 implement happens-before and synchronizes-with.
 
-## (Software) Memory Model of C++11
+<a name="memory model of c++11"/>
+## Memory Model of C++11
 
 What is software memory model:
 
@@ -1250,7 +1254,7 @@ you don't fully understand the consequences by replacing `acquire` with
 
 ### Standalone fence, stronger but slower
 
-Standalone fence is described in section 29.8 of working draft.
+Standalone fence is described in section 29.8 of [working draft](#n3337).
 
 > Fences can have acquire semantics, release semantics, or both. A fence with
 > acquire semantics is called an acquire fence. A fence with release semantics
@@ -1389,7 +1393,7 @@ specified var is "atomic", no partial write or read will happen.
 
 And also, note that
 
-* in .NET and Java key word `volatile` ensures sequentiall consistent memory
+* in .NET and Java key word `volatile` ensures sequentially consistent memory
 	order, kind of like `atomic` with default memory order in C++
 * C++ `std::atomic` default memory order is sequential-consistency we can weaken
 	that, but I didn't find out how to do that with `volatile` in .NET or Java.
@@ -1449,7 +1453,7 @@ atomic.fetch_add(relaxed)               | lock add     | ldxr;add;stxr;cbnz\*   
 x86-64's code genertation is much simpler compared to the rest, but there is no
 free lunch, the `lock` instruction locks the whole bus, it's very expensive.
 
-With stronger constraints, comes less flexibility to optimize.
+With stronger constraints, comes less flexibility for optimization.
 
 There is no free lunch for ARM, POWER and MIPS too.
 Although they are weaker than x86-64 and more flexible, however, it's easier to
@@ -1599,7 +1603,7 @@ Singleton* Singleton::get_instance() {
 }
 ```
 
-#### Lazy eveluation
+#### Lazy evaluation
 
 The right way for lazy evaluation, using `std::call_once`
 
@@ -1612,8 +1616,6 @@ Singleton* Singleton::get_instance() {
 ```
 
 -----
-
-What's more,
 
 ### Lock-free queue
 
@@ -1687,7 +1689,7 @@ void slist<T>::pop_front() {
 }
 ```
 
-It seems that works fine, but there is ABS problem:
+It seems that works fine, but there is ABA problem:
 
 
 ```
@@ -1743,7 +1745,7 @@ Herb gives us some hints to solve the ABA problem
 > 	* But: It's very intricate. Tread with caution.
 
 But I still don't understand despite avoiding recycling memory in time, there
-are other way to resolve this address ABA problem?
+are other ways to resolve this address ABA problem?
 
 There is an [attempt](https://nullprogram.com/blog/2014/09/02/) in option 3
 written in C11, apparently this attempt has hardware limitation.
@@ -1761,9 +1763,11 @@ auto slist<T>::pop_all() {
 
 ### shared_ptr ref_count
 
-Bug mentioned by Herb in his talk [atomic weapons](#Herb Sutter - atomic Weapons).
+Bug mentioned by Herb in his talk [atomic weapons](https://youtu.be/KeLBd2EJLOU?t=4800).
 
-The correct one for shared ptr's reference counting.
+It is very interesting and helpful for us to understand memory order much better.
+
+Fist, we give the correct (fixed) code for shared ptr's reference counting.
 
 Increment
 
@@ -1781,10 +1785,13 @@ if (control_block_ptr->refs
 }
 ```
 
-Increment can be relaxed (not a publish operation).
-Decrement can be acq_rel (both acq+rel necessary, probably sufficient)
+Increment can be `relaxed` (not a publish operation, no one depends on this
+increment).
+Decrement can be `acq_rel` (both acq+rel necessary, probably sufficient).
 
-VS2012's bug with ARM architecture (x86 is much stronger)
+Let's analyse the wrong one that `fetch_sub` uses pure `memory_order_release`.
+
+VS2012's bug with ARM architecture, x86-64 is much stronger they are OK with it.
 
 ```c++
 if (control_block_ptr->refs
@@ -1793,75 +1800,153 @@ if (control_block_ptr->refs
 }
 ```
 
-e.g
+e.g, wrong memory order, pure `release`, consider 2 threads need to decrement
 
 ```
 // Thread 1, 2->1                      |    // Thread 2, 1 -> 0
+// A: use of object                    |    :::
 if (control_block_ptr->refs            |    if (control_block_ptr->refs
       .fetch_sub(                      |          .fetch_sub(
         1, memory_order_release)) {    |            1, memory_order_release)) {
-  // branck not taken                  |       delete control_block_ptr; // B
+  // branch not taken                  |       delete control_block_ptr; // B
 }                                      |    }
-                                       |   
 ```
 
-The explaination given by Herb Sutter
+The explanation given by Herb Sutter
 
 > * No acquire/release => no coherent communication guarantee that thread 2 sees
 > 	thread 1’s writes in the right order. To thread 2, line A could appear to
 > 	move below thread 1’s decrement even though it’s a release(!).
 > * Release doesn’t keep line B below decrement in thread 2.
 
-### shared_ptr ref_count
+The second reason is obvious, because it's a `release-operation`, it free to
+reorder that delete floating up.
 
-Bug mentioned by Herb in his talk [atomic weapons](#Herb Sutter - atomic Weapons).
+It's hard to understand the first one for the first time, to there are 2
+questions:
+1. how can decrementing from 2 to 1 goes before line A
+2. how can line A come after line B
 
-The correct one for shared ptr's reference counting.
+To figure it out, we need to to some transformations that compiler and CPU will
+do with the pure `release` semantics.
 
-Increment
+Transformation 1, break thread 1 into pieces (the load and store is for
+demonstration, they actually may be a single instruction on some hardware)
 
-```c++
-control_block_ptr = other->control_block_ptr;
-control_block_ptr->refs.fetch_add(1, memory_order_relaxed);
 ```
+// Thread 1, 2->1
 
-Decrement
 
-```c++
-if (control_block_ptr->refs
-      .fetch_sub(1, memory_order_acq_rel)) { // key
-  delete control_block_ptr;
+// A: use of object
+
+load ref_cnt
+decrement ref_cnt 2->1
+store ref_cnt
+"release fence"
+if (ref_cnt == 0) {
+  // branch not taken
 }
 ```
 
-Increment can be relaxed (not a publish operation).
-Decrement can be acq_rel (both acq+rel necessary, probably sufficient)
+Transformation 2, reordering happens to decrementing of ref_cnt
 
-VS2012's bug with ARM architecture (x86 is much stronger)
+```
+// Thread 1, 2->1
 
-```c++
-if (control_block_ptr->refs
-      .fetch_sub(1, memory_order_release)) { // buggy
-  delete control_block_ptr;
+load ref_cnt
+decrement ref_cnt 2->1 // reordered
+store ref_cnt
+
+// A: use of object
+
+"release fence"
+if (ref_cnt == 0) {
+  // branck not taken
 }
 ```
 
-e.g
+Transformation 3, break thread 2 into pieces
 
 ```
-// Thread 1, 2->1                      |    // Thread 2, 1 -> 0
-if (control_block_ptr->refs            |    if (control_block_ptr->refs
-      .fetch_sub(                      |          .fetch_sub(
-        1, memory_order_release)) {    |            1, memory_order_release)) {
-  // branck not taken                  |       delete control_block_ptr; // B
-}                                      |    }
-                                       |   
+// Thread 2, 1->0
+:::
+load ref_cnt
+decrement ref_cnt 1->0
+store ref_cnt
+"release fence"
+if (ref_cnt == 0) {
+  delete control_block_ptr; // B
+}
 ```
 
-* No acquire/release => no coherent communication guarantee that thread 2 sees
-	thread 1’s writes in the right order. To thread 2, line A could appear to move
-	below thread 1’s decrement even though it’s a release(!).
-* Release doesn’t keep line B below decrement in thread 2.
+Transformation 4, reordering happens to that delete
+
+```
+// Thread 2, 1->0
+:::
+load ref_cnt
+decrement ref_cnt 1->0
+store ref_cnt
+if (ref_cnt == 0) {
+  delete control_block_ptr; // B
+}
+"release fence"
+```
+
+Transformation 2 and 4 are both legal forms according to the standard:
+
+> All writes in the current thread are visible in other threads that acquire the
+> same atomic variable, and writes that carry a dependency into the atomic
+> variable become visible in other threads that consume the same atomic
+
+Contrast transformation 2 with 4, vertical direction is the execution order.
+
+```
+// Thread 1, 2->1                     |         // Thread 2, 1->0
+load ref_cnt                          |         :::
+decrement ref_cnt 2->1                |
+store ref_cnt                         |
+                                      |         load ref_cnt
+                                      |         decrement ref_cnt 1->0
+                                      |         store ref_cnt
+                                      |         if (ref_cnt == 0) {
+                                      |           delete control_block_ptr; // B
+// A: use of object                   |         }
+"release fence"                       |         "release fence"
+if (ref_cnt == 0) {                   |
+  // branck not taken                 |
+}                                     |
+```
+<a name="figure "/>figure , `release` doesn't keep `synchronizes-with` relation
+
+**Thread 1's use of object comes after thread 2's delete of that object, bang!**
+This is the situation Herb describes, when 2 threads
+try to decrement, there actually is a data dependency, one must
+"wait" for, [synchronizes-with](#synchronizes-with relation) another,
+if using `release` only, there is no such a `synchronize with` semantics.
+
+With `synchronizes-with`, there won't be any transforms like figure given above
+with `fetch_sub(memory_order_acq_rel)`.
+
+```
+// Thread 1, 2->1                     |        // Thread 2, 1->0
+"acquire fence"                       |
+load ref_cnt                          |
+decrement ref_cnt 2->1                |        :::
+// A: use of object                   |
+store ref_cnt           synchronizes-with
+"release fence"    ------------------------->  "acquire fence"
+                                      |        load ref_cnt
+                                      |        decrement ref_cnt 1->0
+                                      |        store ref_cnt
+                                      |        "release fence"
+if (ref_cnt == 0) {                   |        if (ref_cnt == 0) {
+  // branck not taken                 |          delete control_block_ptr; // B
+}                                     |        }
+```
+
+Note: Putting the term "release fence" and "acquire fence" in double quote is to
+distinguish with the standalone fence in C++11.
 
 ### rwlock of glibc
 
@@ -1899,16 +1984,16 @@ Finally, with great power comes lots of fun!
 ## Useful resources
 
 ### Static materials
-[an-introduction-to-lock-free-programming/](http://preshing.com/20120612/an-introduction-to-lock-free-programming)  
-[memory-ordering-at-compile-time/](http://preshing.com/20120625/memory-ordering-at-compile-time)  
-[memory-barriers-are-like-source-control-operations/](http://preshing.com/20120710/memory-barriers-are-like-source-control-operations)  
+[an-introduction-to-lock-free-programming](http://preshing.com/20120612/an-introduction-to-lock-free-programming)  
+[memory-ordering-at-compile-time](http://preshing.com/20120625/memory-ordering-at-compile-time)  
+[memory-barriers-are-like-source-control-operations](http://preshing.com/20120710/memory-barriers-are-like-source-control-operations)  
 <a name="acquire and relase semantics by presshing"/>
-[acquire-and-release-semantics/](http://preshing.com/20120913/acquire-and-release-semantics)  
-[acquire-and-release-fences/](http://preshing.com/20130922/acquire-and-release-fences)  
+[acquire-and-release-semantics](http://preshing.com/20120913/acquire-and-release-semantics)  
+[acquire-and-release-fences](http://preshing.com/20130922/acquire-and-release-fences)  
 <a name="hardware memory models"/>
-[weak-vs-strong-memory-models/](http://preshing.com/20120930/weak-vs-strong-memory-models)  
+[weak-vs-strong-memory-models](http://preshing.com/20120930/weak-vs-strong-memory-models)  
 [the-synchronizes-with-relation](http://preshing.com/20130823/the-synchronizes-with-relation)  
-[double-checked-locking-is-fixed-in-cpp11/](http://preshing.com/20130930/double-checked-locking-is-fixed-in-cpp11)  
+[double-checked-locking-is-fixed-in-cpp11](http://preshing.com/20130930/double-checked-locking-is-fixed-in-cpp11)  
 <a name="acquire-and-release-fences-dont-work-the-way-youd-expect"/>
 [acquire-and-release-fences-dont-work-the-way-youd-expect](http://preshing.com/20131125/acquire-and-release-fences-dont-work-the-way-youd-expect)  
 [the-purpose-of-memory_order_consume-in-cpp11](https://preshing.com/20140709/the-purpose-of-memory_order_consume-in-cpp11)  
@@ -1986,13 +2071,13 @@ Herb Sutter also implicitly talks
 [C++ and Beyond 2012: Herb Sutter - atomic Weapons 2 of 2](https://youtu.be/KeLBd2EJLOU)  
 Herb Sutter's talk about atomic, part 1 is mainly about the fundamentals that
 what is memory order and why they exists, and what is `acquire and release
-semantic`, what does the compiler do for optimization related with instruction
+semantics`, what does the compiler do for optimization related with instruction
 compile-time reordering.
 
 Part 2 is mainly about the optimization that the compiler does about memory
 order. In this part Herb shows the emitted assembly code for different
 architecture CPUs under different circumstances, which can help understanding
-the software `acquire and release semantic` on hardware level.
+the software `acquire and release semantics` on hardware level.
 
 [CppCon 2014: Jeff Preshing "How Ubisoft Develops Games for Multicore - Before and After C++11"](https://youtu.be/X1T3IQ4N-3g)  
 Jeff's talk about atomic lib of C++11.
