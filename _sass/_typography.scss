@@ -98,11 +98,10 @@ tt, code, kbd, samp, pre {
 	font-style: normal;
 // 	font-weight: 100;
 }
-p,
-li { 
+p, li {
 	code { // here defines the code block defined with indention
 		@include font-rem(12);
-// 		line-height: 1.5;
+// 		line-height: normal;
 // 		white-space: nowrap;
 // 		white-space: pre;
 		margin: 0 2px;
