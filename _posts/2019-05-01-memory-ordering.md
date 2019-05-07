@@ -940,6 +940,8 @@ v = 10010;
 A full fence is a bidirectional restriction fence which has both acquire and
 relese semantics.
 
+<img src="/images/memory-ordering/full_fence.png" width="500"/>  
+
 Nothing goes up and nothing goes down.
 
 -----
@@ -1296,13 +1298,13 @@ release operation
 > prevent memory reordering of the write-release with any read or write
 > operation that precedes it in program order.
 
-Release semantics constrains nothing will be reordered past the write-release,
+Release semantics constrains nothing will be reordered after the write-release,
 but cannot prevent some other operations from floating past the write-release,
 and even past that store `tmp = 10086` before release fence, if standalone
 release fence performs in the same way, it won't make any sense that we still
 need a standalone fence.
 
-Fortunately, C++ standard disallows that reordering past release fence, its
+Fortunately, C++ standard disallows that reordering before release fence, its
 the same for the acquire fence too.
 
 [N3337](#n3337) 29.8.2 says:
