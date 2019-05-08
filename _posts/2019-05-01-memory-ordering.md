@@ -719,7 +719,7 @@ are guaranteed.
 <img src="/images/memory-ordering/acquire_semantics.png" width="500"/>  
 
 `acquire`和`release`是配对的, 硬件层面, 这个语义(也许是一条CPU
-instruction)在执行 这个"指令"之后, 在这个"指令"之后的所有内存的load操作都看到的
+instruction)在执行 这个"指令"之后的所有内存的load操作都看到的
 其他核"最新"的变更(depends on memory model of the CPU), 也就是说在这个"指令"之后
 的所有对的指令都不能reorder 到这个"指令"之前. 同样的, 在ARM上这个"指令"是`dmb`,
 在PowerPC上是`lwsync`, 在x86-64上不需要单独的指令.
@@ -1195,9 +1195,10 @@ We can conclude the strength of constraints of the memory ordering as follows:
 an arrow A -> B means constraint of B is stronger than A
 ```
 
-**And we should note that, by definition in the standard, `memory_order_consume`
-and `memory_order_acquire` will not make sense for atomic release operations;
-`memory_order_release` will not make sense for atomic store operations.**
+**And we should note that, by definition in the c++ standard and [acquire and release semantics](#acquire and release semantics),
+`memory_order_consume` and `memory_order_acquire` will not make sense for atomic
+release operations; `memory_order_release` will not make sense for atomic store
+operations.**
 
 ```c++
 atomic<int> A;
@@ -1689,8 +1690,7 @@ void slist<T>::pop_front() {
 }
 ```
 
-It seems that works fine, but there is ABA problem:
-
+It seems that works fine, but there is an ABA problem:
 
 ```
 Initial state:
@@ -1724,7 +1724,11 @@ t4:
 
 ```
 
-Herb gives us some hints to solve the ABA problem
+> Where there is a problem, there is a solution...
+
+Well, I said it.
+
+There are some (common and may more) hints to solve the ABA problem:
 
 > We need to solve the ABA issue: Two nodes with the same address, but different
 > identities (existing at different times).
@@ -1743,15 +1747,98 @@ Herb gives us some hints to solve the ABA problem
 > 4. Option 4: Use hazard pointers.
 > 	* Maged Michael and Andrei Alexandrescu have covered this in detail.
 > 	* But: It's very intricate. Tread with caution.
+> 5. ...
 
-But I still don't understand despite avoiding recycling memory in time, there
-are other ways to resolve this address ABA problem?
+It's getting complicated and hard, and of course, if we don't recycle memory it
+won't be any ABA problem at all! :smirk: Think about it and don't recycle
+anything if you push a lot and pop is much less, it will work well.
 
-There is an [attempt](https://nullprogram.com/blog/2014/09/02/) in option 3
-written in C11, apparently this attempt has hardware limitation.
+There is an attempt for option 1, 2 and 4
+<https://stidio.github.io/2017/01/cpp11_atomic_and_lockfree_program/>, it may
+a bit more complicated, I will discus it in future post
+(lock-free application series?), if I had time and found that this topic is
+still interesting.
 
-To make this list pop single element is not that easy, I will fix this in the
-future post, to get rid of ABA, we may also first pop all the elements at once?
+For option 3, here is an attempt, apparently this attempt has hardware
+limitation. The core idea is using a separate head structure with version,
+compare the content of the head instead of pure address which may be changed
+without notifications.
+
+```c++
+template <typename T>
+class slist {
+...
+  struct Node {
+    T t;
+    Node* next;
+  }
+  struct HeadNode { // 128 bit
+    size_t ver = 0;
+    Node* ptr = nullptr;
+  }
+  // this may be an issue
+  atomic<HeadNode> head {0, nulllptr};
+};
+
+template<typename T>
+void slist<T>::push_front(const T& t) {
+  auto p = new Node;
+  auto h = head.load();
+  do {
+    p->next = h.ptr;
+    p->t = t;
+    HeadNode new_head {h.ver + 1, p}; // increment ver
+  } while (!head.compare_exchange_weak(h, new_head)) { }
+}
+
+template<typename T>
+void slist<T>::pop(const T& t) {
+  auto h = head.load();
+  do {
+    HeadNode new_head {h.ver + 1, h.ptr}; // increment ver
+  } while (!head.compare_exchange_weak(h, new_head)) { }
+  delete h.ptr;
+}
+```
+
+However, it's not perfect, it may not work as lock-free on all hardware due to
+the "big" structure `NodeHead`, some hardware may not have large enough
+register.
+To check if it works, the simplest way may be using
+`std::atomic_is_lock_free()` to determine it.
+
+The following show that atomicity is hardware dependent. (`__atomic_load`)
+
+`gcc8.2 -std=c++17 -O3`
+
+```c++
+// cpp                                | ; asm
+struct BigStruct16 {                  | test_big_struct_lock_free1():
+  size_t ver;                         |        sub     rsp, 24
+  int64_t data;                       |        mov     esi, 5
+};                                    |        mov     rdi, rsp
+                                      |        call    __atomic_load_16
+struct alignas(64) BigStruct64 {      |        add     rsp, 24
+  size_t ver;                         |        ret
+  int64_t data;                       |
+};                                    | test_big_struct_lock_free2():
+                                      |         push    rbp
+void test_big_struct_lock_free1() {   |         mov     ecx, 5
+  std::atomic<BigStruct64> a64;       |         mov     edi, 32
+  auto c = a64.load();                |         mov     rbp, rsp
+}                                     |         and     rsp, -32
+                                      |         sub     rsp, 64
+void test_big_struct_lock_free2() {   |         lea     rdx, [rsp+32]
+  std::atomic<BigStruct64> a64;       |         mov     rsi, rsp
+  auto c = a64.load();                |         call    __atomic_load
+}                                     |         leave
+                                      |         ret
+```
+
+##### Conclusion
+
+To make this list pop single element is not that easy, to get rid of ABA, we may
+also first pop all the elements at once?
 
 ```c++
 template<typename T>
@@ -1759,6 +1846,12 @@ auto slist<T>::pop_all() {
   return head.exchange(nullptr);
 }
 ```
+
+Nice, we are finally done.
+
+(Wait, we didn't talk about which memory order to be apply to atomic operations
+yet?)
+
 -----
 
 ### shared_ptr ref_count
@@ -1977,27 +2070,36 @@ application of MMs.
 Hardware, compiler, and C++ are complicated and powerful, we may not know all
 the stuffs they've done for us, but we need to know the principle.
 
-Finally, with great power comes lots of fun!
+Modern C++, especially C++11, abstracts the memory model very well, the concepts
+and potability of `<atomic>` are very good, helps C++ users a lot, it's very
+hard to do that, but C++ standard committee actually did, bravo!
+
+We talked lock-free programing at last, and found it's a very tough task to do
+general tasks with lock-free technique, we have to do a lot trade-offs be very
+very very careful when we are doing lock-free programming.
+
+Finally, 
+> With Great Power Comes Lots Of Fun!
 
 -----
 
 ## Useful resources
 
 ### Static materials
-[an-introduction-to-lock-free-programming](http://preshing.com/20120612/an-introduction-to-lock-free-programming)  
-[memory-ordering-at-compile-time](http://preshing.com/20120625/memory-ordering-at-compile-time)  
-[memory-barriers-are-like-source-control-operations](http://preshing.com/20120710/memory-barriers-are-like-source-control-operations)  
+> [an-introduction-to-lock-free-programming](http://preshing.com/20120612/an-introduction-to-lock-free-programming)  
+> [memory-ordering-at-compile-time](http://preshing.com/20120625/memory-ordering-at-compile-time)  
+> [memory-barriers-are-like-source-control-operations](http://preshing.com/20120710/memory-barriers-are-like-source-control-operations)  
 <a name="acquire and relase semantics by presshing"/>
-[acquire-and-release-semantics](http://preshing.com/20120913/acquire-and-release-semantics)  
-[acquire-and-release-fences](http://preshing.com/20130922/acquire-and-release-fences)  
+> [acquire-and-release-semantics](http://preshing.com/20120913/acquire-and-release-semantics)  
+> [acquire-and-release-fences](http://preshing.com/20130922/acquire-and-release-fences)  
 <a name="hardware memory models"/>
-[weak-vs-strong-memory-models](http://preshing.com/20120930/weak-vs-strong-memory-models)  
-[the-synchronizes-with-relation](http://preshing.com/20130823/the-synchronizes-with-relation)  
-[double-checked-locking-is-fixed-in-cpp11](http://preshing.com/20130930/double-checked-locking-is-fixed-in-cpp11)  
+> [weak-vs-strong-memory-models](http://preshing.com/20120930/weak-vs-strong-memory-models)  
+> [the-synchronizes-with-relation](http://preshing.com/20130823/the-synchronizes-with-relation)  
+> [double-checked-locking-is-fixed-in-cpp11](http://preshing.com/20130930/double-checked-locking-is-fixed-in-cpp11)  
 <a name="acquire-and-release-fences-dont-work-the-way-youd-expect"/>
-[acquire-and-release-fences-dont-work-the-way-youd-expect](http://preshing.com/20131125/acquire-and-release-fences-dont-work-the-way-youd-expect)  
-[the-purpose-of-memory_order_consume-in-cpp11](https://preshing.com/20140709/the-purpose-of-memory_order_consume-in-cpp11)  
-[can-reordering-of-release-acquire-operations-introduce-deadlock](https://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/)  
+> [acquire-and-release-fences-dont-work-the-way-youd-expect](http://preshing.com/20131125/acquire-and-release-fences-dont-work-the-way-youd-expect)  
+> [the-purpose-of-memory_order_consume-in-cpp11](https://preshing.com/20140709/the-purpose-of-memory_order_consume-in-cpp11)  
+> [can-reordering-of-release-acquire-operations-introduce-deadlock](https://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/)  
 
 Jeff Preshing's posts of "lock-free programing" serial, if you are new to
 lock-free programming or software/hardware memory ordering, read them in the
@@ -2006,26 +2108,28 @@ given order, I can ensure that it may enlighten you greatly.
 And you are welcomed to discuss with me about any
 
 <a name="intel volume 3"/>
-[Intel Software Developer Manuals Combined Volumes: 3a, 3b, 3c and 3d - System programming guide](https://software.intel.com/sites/default/files/managed/a4/60/325384-sdm-vol-3abcd.pdf)  
+> [Intel Software Developer Manuals Combined Volumes: 3a, 3b, 3c and 3d - System programming guide](https://software.intel.com/sites/default/files/managed/a4/60/325384-sdm-vol-3abcd.pdf)  
 
 Volume 3 §8.1 and §8.2 are the same important reference, they show
 the Intel x86-64 family processors' reordering detailed specification, which is
 worth reading.
 
-[GCC's reordering of read/write instructions](https://stackoverflow.com/questions/22106843/gccs-reordering-of-read-write-instructions)  
+> [GCC's reordering of read/write instructions](https://stackoverflow.com/questions/22106843/gccs-reordering-of-read-write-instructions)  
+
 what is the benefit of instruction at compile time and runtime
 
 <a name="#introduction of CPU cache on wikipedia"/>
-[CPU cache](https://en.wikipedia.org/wiki/CPU_cache)  
-[CPU cache coherence](https://en.wikipedia.org/wiki/Cache_coherence)  
+> [CPU cache](https://en.wikipedia.org/wiki/CPU_cache)  
+> [CPU cache coherence](https://en.wikipedia.org/wiki/Cache_coherence)  
 <a name="how intel cache coherence works"/>
-[intel coherence protocol](https://software.intel.com/en-us/forums/intel-moderncode-for-parallel-architectures/topic/777852)  
-[hyper threading](https://en.wikipedia.org/wiki/Hyper-threading)  
-[intel-introduction-to-x64-assembly](https://software.intel.com/en-us/articles/introduction-to-x64-assembly)  
+> [intel coherence protocol](https://software.intel.com/en-us/forums/intel-moderncode-for-parallel-architectures/topic/777852)  
+> [hyper threading](https://en.wikipedia.org/wiki/Hyper-threading)  
+> [intel-introduction-to-x64-assembly](https://software.intel.com/en-us/articles/introduction-to-x64-assembly)  
 
-The above materials are about hardware level that related with memory order.
+The above materials are about hardware level that related to memory order.
 
-[double-checked locking is broken for java](https://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html)  
+> [double-checked locking is broken for java](https://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html)  
+
 This post shows and analyses the broken DLCP for java in compile-time, the
 consturctor is inlined by javac.
 
@@ -2034,41 +2138,64 @@ just fine, the memory order is correct...
 Maybe explicit or compiler optimization `inline` is needed, that a complicated
 case.
 
-[c++ working drat](https://github.com/cplusplus/draft)  
+> [c++ working drat](https://github.com/cplusplus/draft)  
 Here is the C++ Standard Draft Sources, check it for the latest C++ working
 draft.
 
 <a name="N3337"/>
-[C++ working draft N3337](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
+> [C++ working draft N3337](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
+
 This is the C++11 working draft.
 
 <a name="out of thin air"/>
-[Single Threaded Memory Model - an example of out of thin air](https://www.airs.com/blog/archives/79)
-[Optimization of conditional access to globals: thread-unsafe?](https://gcc.gnu.org/ml/gcc/2007-10/msg00266.html)
+> [Single Threaded Memory Model - an example of out of thin air](https://www.airs.com/blog/archives/79)
+> [Optimization of conditional access to globals: thread-unsafe?](https://gcc.gnu.org/ml/gcc/2007-10/msg00266.html)
+
 This mailing list about the conditional access to memory, which covers the
 discussion about out-of-thin-air, and it may affect sequentially consistency
 when compiler optimize this kind of conditional access.
 
 <a name="C++ by BS"/>
-[The C++ Programming Language 4th Edition by Bjarne Stroustrup](need link or citation)
+> [The C++ Programming Language 4th Edition by Bjarne Stroustrup](need link or citation)
+
 Chapter 41 talks about concurrency, memory model and atomic, which is really
 helpful for understanding these concepts.
 
 The purpose/definition of memory model is defined in §41.1.
 
-[obstruction-freedom](http://www.cs.yale.edu/homes/aspnes/pinewiki/ObstructionFreedom.html)
+> [obstruction-freedom](http://www.cs.yale.edu/homes/aspnes/pinewiki/ObstructionFreedom.html)
+
+> [rust memory ordering](https://www.jianshu.com/p/511cde6b62a6)  
+
+Introduces the memory ordering in rust.
+
+> [lock-free statck written with C11](https://nullprogram.com/blog/2014/09/02/)
+
+This is a versioning solution to solve the ABA problem of lock-free singly-liked
+list.
+
+> [lock-free singly-linked list written with C++11](https://stidio.github.io/2017/01/cpp11_atomic_and_lockfree_program/)
+
+This is an attempt to implement a lock-free singly-linked list using hazard
+pointer and reference counting technique.
+
+> [lock-free data structure lib in C](https://www.liblfds.org/)  
+
+Learn from others! This lock-free lib is written in C, may lack of portibility.
 
 ### Videos and talks
-[CppCon 2014: Herb Sutter "Lock-Free Programming" 1/2](https://youtu.be/c1gO9aB9nbs)  
-[CppCon 2014: Herb Sutter "Lock-Free Programming" 2/2](https://youtu.be/CmxkPChOcvw)  
+> [CppCon 2014: Herb Sutter "Lock-Free Programming" 1/2](https://youtu.be/c1gO9aB9nbs)  
+> [CppCon 2014: Herb Sutter "Lock-Free Programming" 2/2](https://youtu.be/CmxkPChOcvw)  
+
 Herb Sutter's talk about lock-free programming, part 1 introduce some
 fundamentals, and part 2 is mainly about some concrete examples like: lock-free
 single list with push and pop and some analysis.
 Herb Sutter also implicitly talks
 
 <a name="Herb Sutter - atomic Weapons"/>
-[C++ and Beyond 2012: Herb Sutter - atomic Weapons 1 of 2](https://youtu.be/A8eCGOqgvH4)  
-[C++ and Beyond 2012: Herb Sutter - atomic Weapons 2 of 2](https://youtu.be/KeLBd2EJLOU)  
+> [C++ and Beyond 2012: Herb Sutter - atomic Weapons 1 of 2](https://youtu.be/A8eCGOqgvH4)  
+> [C++ and Beyond 2012: Herb Sutter - atomic Weapons 2 of 2](https://youtu.be/KeLBd2EJLOU)  
+
 Herb Sutter's talk about atomic, part 1 is mainly about the fundamentals that
 what is memory order and why they exists, and what is `acquire and release
 semantics`, what does the compiler do for optimization related with instruction
@@ -2079,18 +2206,22 @@ order. In this part Herb shows the emitted assembly code for different
 architecture CPUs under different circumstances, which can help understanding
 the software `acquire and release semantics` on hardware level.
 
-[CppCon 2014: Jeff Preshing "How Ubisoft Develops Games for Multicore - Before and After C++11"](https://youtu.be/X1T3IQ4N-3g)  
+> [CppCon 2014: Jeff Preshing "How Ubisoft Develops Games for Multicore - Before and After C++11"](https://youtu.be/X1T3IQ4N-3g)  
+
 Jeff's talk about atomic lib of C++11.
 
-[ACCU 2017 - Atomic’s memory orders, what for? - Frank Birbacher](https://www.youtube.com/watch?v=A_vAG6LIHwQ)  
+> [ACCU 2017 - Atomic’s memory orders, what for? - Frank Birbacher](https://www.youtube.com/watch?v=A_vAG6LIHwQ)  
+
 This talk is mainly about "synchronize-with" relation explanation.
 
-[The C++ Memory Model - Valentin Ziegler @ Meeting C++ 2014](https://youtu.be/gpsz8sc6mNU)
+> [The C++ Memory Model - Valentin Ziegler @ Meeting C++ 2014](https://youtu.be/gpsz8sc6mNU)  
+
 This talk is about memory model of C++11, the first half explains "Sequential
 Consistency" in CPP memory model very well, the second half is not that
 informative.
 
-[CppCon 2015: Michael Wong “C++11/14/17 atomics and memory mode](https://youtu.be/DS2m7T6NKZQ)
+> [CppCon 2015: Michael Wong “C++11/14/17 atomics and memory mode](https://youtu.be/DS2m7T6NKZQ)  
+
 This talk introduce the memory model of C++11/14/17 on a high level. The speaker
 introduces a lot of concepts and definitions of design of memory model of
 C++11/14/17, like:
@@ -2099,8 +2230,4 @@ C++11/14/17, like:
 3. synchronizes-with, sequenced-before, happens-before
 4. etc.
 it's worth watching though the content arrangement seems a little messy.
-
-[rust memory ordering](https://www.jianshu.com/p/511cde6b62a6)
-Introduces the memory ordering in rust.
-
 
