@@ -1243,7 +1243,7 @@ void foo() {
 }
 ```
 
-Note that every `consume` and be replaced with `acquire`, but not vice versus,
+Note that every `consume` and be replaced with `acquire`, but not vice versa,
 the data dependency is some time hard to figure out, and don't be clever when
 you don't fully understand the consequences by replacing `acquire` with
 `consume` if you think it "may" improve the performance.
@@ -1486,7 +1486,7 @@ Strengths of lock-freedom
 * Wait-free, "some one make progress"
 	* every step taken achieves global progress (for some sensible definition of
 		progress)
-	* all wait-free algorithms are lock-free, but no vice versus
+	* all wait-free algorithms are lock-free, but not vice versa
 * Obstruction-free, weakest, "progress if no interference"
 	* at any point, a single thread executed in isolation (i.e., with all
 		obstruction threads suspended) for a bounded number of steps will complete
@@ -1494,12 +1494,13 @@ Strengths of lock-freedom
 	* no thread can be blocked by delays or failures of other threads
 	* doesn't guarantee progress while two or more threads run concurrently (e.g.,
 		deadlock is impossible, but livelock could be possible).
-	* all lock-free algorithms are obstruction-free, but not vice versus
+	* all lock-free algorithms are obstruction-free, but not vice versa
 
 wait-free => lock-free => obstruction-free
+
 wait-free ?=> obstruction-free
 
-We should analyse the program to see what kind of  "lock-free" it is, program
+We should analyse the program to see what kind of "lock-free" it is, program
 without explicit locks is lock-free but performance varies among different
 implementations.
 
@@ -1524,6 +1525,43 @@ finishes in a finite number of steps.
 A method is obstruction-free if, from any point after which it executes in
 isolation, it finishes in a finite number of steps (method call executes in
 isolation if no other threads take steps).
+
+#### Lock-freedom examples
+
+This is a piece of code that is lock-free but not wait-free.
+
+```c++
+size_t sleep_micro_sec = 5;
+std::atomic<bool> locked_flag_ = ATOMIC_VAR_INIT(false);
+
+void foo() {
+  bool exp = false;
+  while (!locked_flag_.compare_exchange_strong(exp, true)) {
+    exp = false;
+    if (sleep_micro_sec == 0) {
+      std::this_thread::yield();
+    } else if (sleep_micro_sec != 0) {
+      std::this_thread::sleep_for(std::chrono::microseconds(sleep_micro_sec));
+    }
+  }
+}
+```
+
+This is a piece of code that is (usually) wait-free with low(not that high)
+contention. We said it is "usually" because it may spin for long with high
+contention.
+
+```c++
+template<typename T>
+void slist<T>::push_front(const T& t) {
+  auto p = new Node;
+  p->t = t;
+  p->next = head;
+  // spin until success
+  // try to prepend to head when we see the head
+  while (!head.compare_exchange_weak(p->next, p)) { }
+}
+```
 
 ### Double-checked lock pattern, DCLP
 
@@ -1803,7 +1841,7 @@ void slist<T>::pop(const T& t) {
 
 However, it's not perfect, it may not work as lock-free on all hardware due to
 the "big" structure `NodeHead`, some hardware may not have large enough
-register.
+register, here may be 128 bits, to complete CAS within one instruction.
 To check if it works, the simplest way may be using
 `std::atomic_is_lock_free()` to determine it.
 
@@ -1813,7 +1851,7 @@ The following show that atomicity is hardware dependent. (`__atomic_load`)
 
 ```c++
 // cpp                                | ; asm
-struct BigStruct16 {                  | test_big_struct_lock_free1():
+struct alignas(16) BigStruct16 {      | test_big_struct_lock_free1():
   size_t ver;                         |        sub     rsp, 24
   int64_t data;                       |        mov     esi, 5
 };                                    |        mov     rdi, rsp
@@ -1833,6 +1871,8 @@ void test_big_struct_lock_free2() {   |         lea     rdx, [rsp+32]
   auto c = a64.load();                |         call    __atomic_load
 }                                     |         leave
                                       |         ret
+// on most of modern Intel's x86-64 processors there are 128-bit registers
+// BigStruct16 is lock free
 ```
 
 ##### Conclusion
