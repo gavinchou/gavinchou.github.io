@@ -1280,6 +1280,7 @@ A.store(10010, std::memory_order_release);
 
 is it equivalent to the following?
 
+<a name="code standalone fence"/>
 ```c++
 extern int tmp;
 
@@ -1344,7 +1345,7 @@ prevents all preceding **writes** from moving past **all subsequent stores**.
 operation.**
 
 [This post by Jeff Preshing](#acquire-and-release-fences-dont-work-the-way-youd-expect)
-discusses the example given previously in this section in details.
+discusses [the example given previously](#code standalone fence) in details.
 
 And what we need to notice is that standalone fences are sub-optimal and it is a
 performance pessimization.
@@ -1401,64 +1402,114 @@ And also, note that
 
 ## Code generation
 
-gcc 8.2, 8.2, 6.3, 5.4 with `-std=c++17 -O3`
+This section introduces the code generation that implements C++ memory model on
+different types of processors.
+
+They are compiled with gcc 8.2, 8.2, 6.3, 5.4 with option `-std=c++17 -O3`.
+The versions of gcc varies because they are the newest gcc version for
+corresponding processors on <godbolt.org>.
 
 ```c++
-int a = 10;
-int b = 10;
-std::atomic<int> a1 {10};
+int a = 1;
+int b = 2;
+std::atomic<int> a1 {3};
+extern int c;
+
 void foo() {
   a = 1;
   b = 2;
   a1.compare_exchange_strong(a, 10086, std::memory_order_relaxed);
-  a = 3;
+  a = c;
 }
 ```
+code. code snippet for code generation
 
-operation                               | x86-64       | arm64                      | power64le                                   | mips64
------                                   |-----         |-----                       |-----                                        |-----
-atomic_thread_fence(seq_cst)            | mfence       | dmb                        | sync;blr                                    | sync
-atomic_thread_fence(acq_rel)            |  -           | dmb                        | lwsync;blr                                  | sync
-atomic_thread_fence(release)            |  -           | dmb                        | lwsync;blr                                  | sync
-atomic_thread_fence(acquire)            |  -           | dmb                        | lwsync;blr                                  | sync
-atomic_thread_fence(consume)            |  -           | dmb                        | lwsync;blr                                  | sync
-atomic.store(seq_cst)                   | mov;mfence   | stlr                       | li;addis;sync;stw                           | li;sync
-atomic.store(acq_rel)                   | mov;mfence   | stlr                       | li;addis;sync;stw                           | li;sync
-atomic.store(release)                   | mov          | stlr                       | li;addis;sync;stw                           | li;sync
-atomic.store(relaxed)                   | mov          | str                        | li;stw                                      | li
-atomic.load(seq_cst)                    | mov          | ldar                       | sync;addis;lwz,cmpw,bne\*;isync             | ld;sync;lw
-atomic.load(acq_rel)                    | mov          | ldar                       | sync;addis;lwz,cmpw,bne\*;isync             | ld;sync;lw
-atomic.load(acquire)                    | mov          | ldar                       | sync;addis;lwz,cmpw,bne\*;isync             | ld;sync;lw
-atomic.load(relaxed)                    | mov          | ldr                        | addis;lwz                                   | ld;lw
-atomic.exchange(seq_cst)                | xchg         | ldaxr;staxr;cbnz\*         | sync;lwarx;stwcx;bne\*;isync                | sync;li;sc;beq\*;sync
-atomic.exchange(acq_rel)                | xchg         | ldaxr;staxr;cbnz\*         | lwsync;lwarx;stwcx;bne\*;isync              | sync;li;sc;beq\*;sync
-atomic.exchange(acquire)                | xchg         | ldaxr;stxr;cbnz\*          | lwarx;stwcx;bne\*;isync                     | li;sc;beq\*;sync
-atomic.exchange(consume)                | xchg         | ldaxr;stxr;cbnz\*          | lwarx;stwcx;bne\*;isync                     | li;sc;beq\*;sync
-atomic.exchange(release)                | xchg         | ldxr;staxr;cbnz\*          | lwsync;lwarx;stwcx;bne\*                    | sync;li;sc;beq\*
-atomic.exchange(relaxed)                | xchg         | ldxr;stxr;cbnz\*           | lwarx;stwcx;bne\*                           | li;sc;beq\*
-atomic.compare_exchange_strong(seq_cst) | lock cmpxchg | ldaxr;cmp;bne;stlxr;cbnz\* | sync;lwarx;cmpwi;bne\*;stwcx.;bne\*;isync   | sync;ll;bne\*;li;sc;beq\*;nop;sync
-atomic.compare_exchange_strong(acq_rel) | lock cmpxchg | ldaxr;cmp;bne;stlxr;cbnz\* | lwsync;lwarx;cmpwi;bne\*;stwcx.;bne\*;isync | sync;ll;bne\*;li;sc;beq\*;nop;sync
-atomic.compare_exchange_strong(acquire) | lock cmpxchg | ldaxr;cmp;bne;stxr;cbnz\*  | lwarx;cmpwi;bne\*;stwcx.;bne\*;isync        | ll;bne\*;li;sc;beq\*;nop;sync
-atomic.compare_exchange_strong(consume) | lock cmpxchg | ldaxr;cmp;bne;stxr;cbnz\*  | lwarx;cmpwi;bne\*;stwcx.;bne\*;isync        | ll;bne\*;li;sc;beq\*;nop;sync
-atomic.compare_exchange_strong(release) | lock cmpxchg | ldxr;cmp;bne;stlxr;cbnz\*  | lwsync;lwarx;cmpwi;bne\*;stwcx.;bne\*       | sync;ll;bne\*;li;sc;beq\*;nop
-atomic.compare_exchange_strong(relaxed) | lock cmpxchg | ldxr;cmp;bne;stxr;cbnz\*   | lwarx;cmpwi;bne\*;stwcx.;bne\*              | ll;bne\*;li;sc;beq\*;nop
-atomic.fetch_add(seq_cst)               | lock add     | ldaxr;add;stlxr;cbnz\*     | sync;lwarx;stwcx.;bne\*;isync               | sync;ll;addiu;sc;beq\*;nop;sync
-atomic.fetch_add(acq_rel)               | lock add     | ldaxr;add;stlxr;cbnz\*     | lwsync;lwarx;stwcx.;bne\*;isync             | sync;ll;addiu;sc;beq\*;nop;sync
-atomic.fetch_add(acquire)               | lock add     | ldaxr;add;stxr;cbnz\*      | addis;addi;lwarx;addi;stwcx.;bne\*;isync    | sync;ll;addiu;sc;beq\*;nop;sync
-atomic.fetch_add(consume)               | lock add     | ldaxr;add;stxr;cbnz\*      | addis;addi;lwarx;addi;stwcx.;bne\*;isync    | sync;ll;addiu;sc;beq\*;nop;sync
-atomic.fetch_add(release)               | lock add     | ldxr;add;stlxr;cbnz\*      | lwsync;lwarx;stwcx.;bne\*                   | sync;ll;addiu;sc;beq\*;nop;sync
-atomic.fetch_add(relaxed)               | lock add     | ldxr;add;stxr;cbnz\*       | addis;addi;lwarx;addi;stwcx.;bne\*          | sync;ll;addiu;sc;beq\*;nop;sync
+operation                               | x86-64       | power64le
+-----                                   |-----         |-----
+atomic_thread_fence(seq_cst)            | mfence       | sync;blr
+atomic_thread_fence(acq_rel)            |  -           | lwsync;blr
+atomic_thread_fence(release)            |  -           | lwsync;blr
+atomic_thread_fence(acquire)            |  -           | lwsync;blr
+atomic_thread_fence(consume)            |  -           | lwsync;blr
+atomic.store(seq_cst)                   | mov;mfence   | li;addis;sync;stw
+atomic.store(acq_rel)                   | mov;mfence   | li;addis;sync;stw
+atomic.store(release)                   | mov          | li;addis;sync;stw
+atomic.store(relaxed)                   | mov          | li;stw
+atomic.load(seq_cst)                    | mov          | sync;addis;lwz,cmpw,bne\*;isync
+atomic.load(acq_rel)                    | mov          | sync;addis;lwz,cmpw,bne\*;isync
+atomic.load(acquire)                    | mov          | sync;addis;lwz,cmpw,bne\*;isync
+atomic.load(relaxed)                    | mov          | addis;lwz
+atomic.exchange(seq_cst)                | xchg         | sync;lwarx;stwcx;bne\*;isync
+atomic.exchange(acq_rel)                | xchg         | lwsync;lwarx;stwcx;bne\*;isync
+atomic.exchange(acquire)                | xchg         | lwarx;stwcx;bne\*;isync
+atomic.exchange(consume)                | xchg         | lwarx;stwcx;bne\*;isync
+atomic.exchange(release)                | xchg         | lwsync;lwarx;stwcx;bne\*
+atomic.exchange(relaxed)                | xchg         | lwarx;stwcx;bne\*
+atomic.compare_exchange_strong(seq_cst) | lock cmpxchg | sync;lwarx;cmpwi;bne\*;stwcx.;bne\*;isync
+atomic.compare_exchange_strong(acq_rel) | lock cmpxchg | lwsync;lwarx;cmpwi;bne\*;stwcx.;bne\*;isync
+atomic.compare_exchange_strong(acquire) | lock cmpxchg | lwarx;cmpwi;bne\*;stwcx.;bne\*;isync
+atomic.compare_exchange_strong(consume) | lock cmpxchg | lwarx;cmpwi;bne\*;stwcx.;bne\*;isync
+atomic.compare_exchange_strong(release) | lock cmpxchg | lwsync;lwarx;cmpwi;bne\*;stwcx.;bne\*
+atomic.compare_exchange_strong(relaxed) | lock cmpxchg | lwarx;cmpwi;bne\*;stwcx.;bne\*
+atomic.fetch_add(seq_cst)               | lock add/xadd| sync;lwarx;stwcx.;bne\*;isync
+atomic.fetch_add(acq_rel)               | lock add/xadd| lwsync;lwarx;stwcx.;bne\*;isync
+atomic.fetch_add(acquire)               | lock add/xadd| addis;addi;lwarx;addi;stwcx.;bne\*;isync
+atomic.fetch_add(consume)               | lock add/xadd| addis;addi;lwarx;addi;stwcx.;bne\*;isync
+atomic.fetch_add(release)               | lock add/xadd| lwsync;lwarx;stwcx.;bne\*
+atomic.fetch_add(relaxed)               | lock add/xadd| addis;addi;lwarx;addi;stwcx.;bne\*
+
+table. code generation part 1
+
+the `fetch_add/fetch_sub` will generate `add` or `xadd` on x86-64 according to
+the use of reuturn value, if not used simple `lock add` is enough.
+
+operation                               | arm64                     | mips64
+-----                                   |-----                      |-----
+atomic_thread_fence(seq_cst)            | dmb                       | sync
+atomic_thread_fence(acq_rel)            | dmb                       | sync
+atomic_thread_fence(release)            | dmb                       | sync
+atomic_thread_fence(acquire)            | dmb                       | sync
+atomic_thread_fence(consume)            | dmb                       | sync
+atomic.store(seq_cst)                   | stlr                      | li;sync
+atomic.store(acq_rel)                   | stlr                      | li;sync
+atomic.store(release)                   | stlr                      | li;sync
+atomic.store(relaxed)                   | str                       | li
+atomic.load(seq_cst)                    | ldar                      | ld;sync;lw
+atomic.load(acq_rel)                    | ldar                      | ld;sync;lw
+atomic.load(acquire)                    | ldar                      | ld;sync;lw
+atomic.load(relaxed)                    | ldr                       | ld;lw
+atomic.exchange(seq_cst)                | ldaxr;staxr;cbnz\*        | sync;li;sc;beq\*;sync
+atomic.exchange(acq_rel)                | ldaxr;staxr;cbnz\*        | sync;li;sc;beq\*;sync
+atomic.exchange(acquire)                | ldaxr;stxr;cbnz\*         | li;sc;beq\*;sync
+atomic.exchange(consume)                | ldaxr;stxr;cbnz\*         | li;sc;beq\*;sync
+atomic.exchange(release)                | ldxr;staxr;cbnz\*         | sync;li;sc;beq\*
+atomic.exchange(relaxed)                | ldxr;stxr;cbnz\*          | li;sc;beq\*
+atomic.compare_exchange_strong(seq_cst) | ldaxr;cmp;bne;stlxr;cbnz\*| sync;ll;bne\*;li;sc;beq\*;nop;sync
+atomic.compare_exchange_strong(acq_rel) | ldaxr;cmp;bne;stlxr;cbnz\*| sync;ll;bne\*;li;sc;beq\*;nop;sync
+atomic.compare_exchange_strong(acquire) | ldaxr;cmp;bne;stxr;cbnz\* | ll;bne\*;li;sc;beq\*;nop;sync
+atomic.compare_exchange_strong(consume) | ldaxr;cmp;bne;stxr;cbnz\* | ll;bne\*;li;sc;beq\*;nop;sync
+atomic.compare_exchange_strong(release) | ldxr;cmp;bne;stlxr;cbnz\* | sync;ll;bne\*;li;sc;beq\*;nop
+atomic.compare_exchange_strong(relaxed) | ldxr;cmp;bne;stxr;cbnz\*  | ll;bne\*;li;sc;beq\*;nop
+atomic.fetch_add(seq_cst)               | ldaxr;add;stlxr;cbnz\*    | sync;ll;addiu;sc;beq\*;nop;sync
+atomic.fetch_add(acq_rel)               | ldaxr;add;stlxr;cbnz\*    | sync;ll;addiu;sc;beq\*;nop;sync
+atomic.fetch_add(acquire)               | ldaxr;add;stxr;cbnz\*     | sync;ll;addiu;sc;beq\*;nop;sync
+atomic.fetch_add(consume)               | ldaxr;add;stxr;cbnz\*     | sync;ll;addiu;sc;beq\*;nop;sync
+atomic.fetch_add(release)               | ldxr;add;stlxr;cbnz\*     | sync;ll;addiu;sc;beq\*;nop;sync
+atomic.fetch_add(relaxed)               | ldxr;add;stxr;cbnz\*      | sync;ll;addiu;sc;beq\*;nop;sync
+
+table. code generation part 2
 
 `*` means there is a loop
 
-x86-64's code genertation is much simpler compared to the rest, but there is no
-free lunch, the `lock` instruction locks the whole bus, it's very expensive.
+x86-64's code generation is much simpler compared to the rest due to it's strong
+hardware memory model, but there is no free lunch, the `lock` instruction locks
+the whole bus, it's very expensive.
 
 With stronger constraints, comes less flexibility for optimization.
 
-There is no free lunch for ARM, POWER and MIPS too.
-Although they are weaker than x86-64 and more flexible, however, it's easier to
-write buggy code while doing optimization.
+There is no free lunch for ARM, POWER and MIPS too.  Although they are weaker
+than x86-64 and more flexible, however, it's easier to write buggy code while
+doing optimization.
 
 -----
 
@@ -1952,7 +2003,7 @@ The explanation given by Herb Sutter
 > 	move below thread 1’s decrement even though it’s a release(!).
 > * Release doesn’t keep line B below decrement in thread 2.
 
-The second reason is obvious, because it's a `release-operation`, it free to
+The second reason is obvious, because it's a `release-operation`, it's free to
 reorder that delete floating up.
 
 It's hard to understand the first one for the first time, to there are 2
@@ -1960,7 +2011,7 @@ questions:
 1. how can decrementing from 2 to 1 goes before line A
 2. how can line A come after line B
 
-To figure it out, we need to to some transformations that compiler and CPU will
+To figure it out, we need to some transformations that compiler and CPU will
 do with the pure `release` semantics.
 
 Transformation 1, break thread 1 into pieces (the load and store is for
@@ -2027,6 +2078,14 @@ if (ref_cnt == 0) {
 ```
 
 Transformation 2 and 4 are both legal forms according to the standard:
+
+[N3337](#n337) 29.3.2
+> An atomic operation A that performs a release operation on an atomic object M
+> synchronizes with an atomic operation B that performs an acquire operation on
+> M and takes its value from any side effect in the release sequence headed by
+> A.
+
+in other words, by cppreference:
 
 > All writes in the current thread are visible in other threads that acquire the
 > same atomic variable, and writes that carry a dependency into the atomic
@@ -2171,7 +2230,7 @@ The above materials are about hardware level that related to memory order.
 > [double-checked locking is broken for java](https://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html)  
 
 This post shows and analyses the broken DLCP for java in compile-time, the
-consturctor is inlined by javac.
+constructor is inlined by javac.
 
 However, I do not see any thing wrong with gcc, the generated assembly code is
 just fine, the memory order is correct...
@@ -2179,13 +2238,14 @@ Maybe explicit or compiler optimization `inline` is needed, that a complicated
 case.
 
 > [c++ working drat](https://github.com/cplusplus/draft)  
+
 Here is the C++ Standard Draft Sources, check it for the latest C++ working
 draft.
 
 <a name="N3337"/>
 > [C++ working draft N3337](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 
-This is the C++11 working draft.
+This is the latest publication of C++11 working draft.
 
 <a name="out of thin air"/>
 > [Single Threaded Memory Model - an example of out of thin air](https://www.airs.com/blog/archives/79)
