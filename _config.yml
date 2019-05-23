@@ -12,9 +12,12 @@ disqus_shortname: gavinchou
 reading_time:     true # if true, shows the estimated reading time for a post
 words_per_minute: 200
 logo:             images/eecs_logo.png # logo visible in the topbar
+
 # Your site's domain goes here (eg: //mmistakes.github.io, http://mademistakes.com, etc)
 # When testing locally leave blank or use http://localhost:4000
-
+# for local debug
+# url: file:///Users/gavin/Documents/github-io/_site
+# relase
 url: http://gavinchou.github.io
 
 # draw your top menu here
@@ -79,7 +82,7 @@ timezone:    China/Beijing
 locale:      en_US
 future:      true
 highlighter: rouge # _sass/_rouge for highlight scheme
-linenos: true
+# linenos: true
 gems:
   - jekyll-sitemap
 sass:
@@ -99,19 +102,20 @@ markdown: kramdown
 
 kramdown:
   input: GFM
+  # https://github.com/jekyll/jekyll/pull/4090
   syntax_highlighter: rouge
-#   auto_ids: true
-#   footnote_nr: 1
-#   entity_output: as_char
-#   toc_levels: 1..6
-#   # coderay will mess up the inline code block
-#   enable_coderay: true
-#   coderay:
-#     coderay_line_numbers: true
-#     coderay_line_numbers_start: 1
-#     coderay_tab_width: 2
-#     coderay_bold_every: 10
-#     coderay_css: class
+  # Rouge Highlighter in Kramdown › http://kramdown.gettalong.org/syntax_highlighter/rouge.html
+  # span, block element options fall back to global
+#   syntax_highlighter_opts:
+#     # Rouge Options › https://github.com/jneen/rouge#full-options
+#     css_class: 'highlight'
+#     #line_numbers: true # bad idea, spans don't need linenos and would inherit this option
+#     span:
+#       line_numbers: false
+#     block:
+#       line_numbers: true
+#       start_line: 1
+
 
 # Octopress
 # Default extensions

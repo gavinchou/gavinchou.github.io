@@ -1,5 +1,5 @@
-/* Sumblime Monokai theme
-
+/*
+Sumblime Monokai theme
 For use with Jekyll and Pygments
 */
 
@@ -7,7 +7,7 @@ For use with Jekyll and Pygments
 	margin-bottom: 1.5em;
 	@include font(12);
 	color: $code-fg;
-	border: 1px solid darken($body-color, 5);
+	border: 0px solid darken($body-color, 5);
 	background-color: $code-bg; // code block background
 	@include rounded(3px);
 	pre {
@@ -15,10 +15,11 @@ For use with Jekyll and Pygments
 		margin: 0;
 		padding: 1em;
 	}
+	font-size: 0.825rem;
 	line-height: 1.1;
 // 	max-height: 300px;
 // 	overflow-y: auto;
-	.lineno { padding-right: 24px; color: #8f908a;}
+	.lineno { padding-right: 1em; /*width: 1em;*/ color: #8f908a;}
 	.hll { background-color: #49483e }
 	.c { color: #00e000 } /* Comment */
 	.err { color: #960050; background-color: #1e0010 } /* Error */
