@@ -241,13 +241,15 @@ is in the template function, be aware of that the following statements are
 **not type cast**, it's just like a "declaration" to specify the type/use of
 that initializer list.
 
+The following is kind of "decalaration", decalaring that `<brace-enclosed
+initializer list>` is a certain type.
+
 ```cpp
 (std:initializer_list<std::string>){"10", "20"}
 (Range){"10", "20"}
 ```
 
-The above code is something more like `(void) a; // avoid unused waring`,
-it can also be simply written as
+The above code can be simply written as
 
 ```cpp
 std:initializer_list<std::string> {"10", "20"}
@@ -255,11 +257,16 @@ Range {"10", "20"}
 ```
 
 Apparently, the following wont compile, it's a syntax error, because `{...}` is
-being deduced without any context, which will certainly fail.
+being deduced without any context (type info), which will certainly fail.
 
 ```cpp
+// static cast
 static_cast<std:initializer_list<std::string>>({"10", "20"})
 static_cast<Range>({"10", "20"})
+
+// force cast
+(std:initializer_list<std::string>)({"10", "20"})
+(Range)({"10", "20"})
 ```
 
 ### Conclusion
