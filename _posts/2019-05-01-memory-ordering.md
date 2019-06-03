@@ -6,8 +6,6 @@ categories: summary c++
 tags: C++ C++11 memory-order lock-free atomic
 ---
 
-* This will become a table of contents (this text will be scraped).
-{:toc}
 
 ## Preface
 
@@ -26,6 +24,11 @@ This post covers the following questions
 3. How to understand it on a high level?
 4. How to use it (lock-free programming)?
 
+<!-- more -->
+
+* This will become a table of contents (this text will be scraped).
+{:toc}
+
 <a name="CPU cache"/>
 ## CPU cache
 
@@ -37,8 +40,6 @@ This post covers the following questions
 > caches, where the data cache is usually organized as a hierarchy of more cache
 > levels (L1, L2, L3, L4, etc.).
 > ...
-
-<!-- more -->
 
 <img src="/images/memory-ordering/cpu_structure.png" width="300"/>  
 <a name="figure 1"/>figure 1. general CPU architecture
@@ -1817,7 +1818,7 @@ t4:
 
 Well, I said it.
 
-There are some (common and may more) hints to solve the ABA problem:
+There are some (common and may be more) hints to solve the ABA problem:
 
 > We need to solve the ABA issue: Two nodes with the same address, but different
 > identities (existing at different times).
@@ -2282,6 +2283,8 @@ pointer and reference counting technique.
 > [lock-free data structure lib in C](https://www.liblfds.org/)  
 
 Learn from others! This lock-free lib is written in C, may lack of portibility.
+
+> [linus store buffer](https://yarchive.net/comp/linux/store_buffer.html)
 
 ### Videos and talks
 > [CppCon 2014: Herb Sutter "Lock-Free Programming" 1/2](https://youtu.be/c1gO9aB9nbs)  
