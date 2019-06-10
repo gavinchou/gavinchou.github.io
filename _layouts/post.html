@@ -22,26 +22,34 @@
   background-color: #2e2e2e;
   padding: 0em;
   font-size: 12px;
+  font-family: Times;
   width: 15em;
   margin-right: 0px;
-}
-.toc-list {
-  background-color: #fff;
-  margin: 5px 0;
-  /*padding: 10px 30px;*/
-  border: 1px solid #e8e8e8;
   border-radius: 3px;
+}
+.toc-header {
+  color:#ffffff;
+  padding-left: 5px;
+  padding-top: 5px;
+  border-radius: 3px;
+}
+.toc-body {
+  background-color: #ffffff;
+  margin-left: 2px;
+  margin-right: 2px;
+  border-radius: 3px;
+  padding-left: 2em;
 }
 </style>
 
 <div id="main" role="main">
   <article class="hentry">
     <div id="table-of-contents" class="toc-sticky">
-      <div id="table-of-contents-header">
-        <font color="#ffffff">Contents</font>
+      <div id="table-of-contents-header" class="toc-header">
+        Contents
       </div>
       <div id="table-of-contents-body">
-        {% toc %}
+        {% include toc.html html=content ordered=false sanitize=true class="toc-body" id="my_toc" h_min=2 h_max=2 %}
       </div>
     </div>
     <div class="entry-content">

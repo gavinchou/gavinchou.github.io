@@ -3,9 +3,10 @@
 # file and run `bundle install`. Run Jekyll with `bundle exec`, like so:
 source 'https://rubygems.org'
 
-# gem 'github-pages', group: :jekyll_plugins
 # gem "github-pages"
-gem "jekyll"
-gem "jekyll-sitemap"
-gem 'jekyll-paginate'
-gem 'jekyll-toc', '0.12.1'
+# gem "jekyll"
+# gem "jekyll-sitemap"
+# gem 'jekyll-paginate'
+
+# all in one
+gem 'github-pages', group: :jekyll_plugins

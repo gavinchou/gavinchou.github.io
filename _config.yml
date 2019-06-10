@@ -79,7 +79,6 @@ bing_verify:
 plugins:
   - jekyll-paginate
   - jekyll-sitemap
-  - jekyll-toc
 
 # Build settings
 # http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -118,19 +117,6 @@ kramdown:
 #     block:
 #       line_numbers: true
 #       start_line: 1
-
-# table of contents, conf of plugin jekyll-toc:
-toc:
-  min_level: 2 # default: 1
-  max_level: 2 # default: 6
-  # Default is "section-nav":
-  list_class: toc-list
-  # Default is no class for sublists:
-  # sublist_class: my-sublist-class
-  # Default is "toc-entry":
-  # item_class: my-item-class
-  # Default is "toc-":
-  # item_prefix: item-
 
 # Octopress
 # Default extensions

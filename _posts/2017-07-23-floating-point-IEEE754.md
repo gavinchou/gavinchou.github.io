@@ -8,7 +8,7 @@ tags: encoding float
 ---
 #  IEEE754, floating point, conversion (representation)
 
-### binary representation
+## binary representation
 <!-- more -->
 ```
 for single precition, float 32bits
@@ -45,7 +45,7 @@ mantissa 52 bits
 
 ```
 
-### IEEE754 binary to decimal
+## IEEE754 binary to decimal
 
 ```
 given IEEE754 binary form, 32bit single precision floating point
@@ -86,7 +86,7 @@ mantissa 52 bits
 
 ```
 
-### decimal to IEEE754 binary
+## decimal to IEEE754 binary
 1. convert integer part to binary
 2. convert fraction part to binary
 3. convert to scientific representation, normalize
@@ -200,11 +200,11 @@ the same procedure format with IEEE754 spec double precision
 
 ```
 
-### floating point arithmetic
+## floating point arithmetic
 
 TBD
 
-### ref
+## ref
 
 <https://www.youtube.com/watch?v=tx-M_rqhuUA>  
 <https://www.h-schmidt.net/FloatConverter/IEEE754.html>  
