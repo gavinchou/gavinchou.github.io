@@ -26,8 +26,14 @@ This post covers the following questions
 
 <!-- more -->
 
+-----
+
+## Table of contents
+
 * This will become a table of contents (this text will be scraped).
 {:toc}
+
+-----
 
 <a name="CPU cache"/>
 ## CPU cache
