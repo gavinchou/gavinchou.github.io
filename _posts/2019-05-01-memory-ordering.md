@@ -3,6 +3,7 @@ layout: post
 title:  "memory ordering"
 date: 2019-05-01-Wed 01:19:23 +0800
 categories: summary c++
+toc: true
 tags: C++ C++11 memory-order lock-free atomic
 ---
 
