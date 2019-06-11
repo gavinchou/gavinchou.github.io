@@ -95,3 +95,36 @@ var sharing = function(){
       });
     });
 };//sharing
+
+// jumping with offset
+$(document).ready(function() {
+  // replace all href click behavior
+  // https://api.jquery.com/category/selectors/
+  // TODO: process anchors only, skip unnecessary hrefs
+  $('a[href^="#"]:not([href="#menu"]').click(function() {
+    if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'')
+        && location.hostname == this.hostname) {
+      var target = $(this.hash);
+      target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+      if (target.length) {
+        $('html,body').animate({
+          scrollTop: target.offset().top - 125 //offsets for fixed header
+        }, 1000);
+        return false;
+      }
+    }
+  });
+  // Executed on page load with URL containing an anchor tag.
+  if($(location.href.split("#")[1])) {
+    var target = $('#'+location.href.split("#")[1]);
+    if (target.length) {
+      $('html,body').animate({
+        scrollTop: target.offset().top - 125 //offset height of header here too.
+      }, 1000);
+      return false;
+    }
+  }
+});
+// end of TOC jumping with offset
+
+// vim: et tw=80 ts=2 sw=2 cc=80:
