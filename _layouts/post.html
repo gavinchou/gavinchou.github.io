@@ -37,16 +37,27 @@
   border-radius: 3px;
   cursor: pointer;
   text-align: left;
+  overflow: hidden;
+  white-space: nowrap; // dont wrap if white-space encountered
 }
 .toc-body {
   // display: none;
-  overflow: hidden;
 }
 .toc-list {
   background-color: #ffffff;
   margin: 2px;
   border-radius: 3px;
   padding-left: 2em;
+  overflow: auto;
+  max-height: 40em;
+  white-space: nowrap;
+}
+// listing indent, global effect
+ul li ul {
+padding-left: 1em;
+}
+ul li ul li ul {
+padding-left: 1em;
 }
 </style>
 <script>
@@ -57,10 +68,13 @@ window.addEventListener('load', function() {
       var content = document.getElementById("table-of-contents-body");
       if (content.style.display === "none") {
         content.style.display = "block";
-        this.textContent = "Contents (click to collapse)";
+        this.textContent = "Contents (click to collapse) >>";
+        document.getElementById("table-of-contents").style.width = "15em";
       } else {
         content.style.display = "none";
-        this.textContent = "Contents (click to view)";
+        // this.textContent = "<< Contents (click to view)";
+        this.textContent = "<< ";
+        document.getElementById("table-of-contents").style.width = "2em";
       }
   });
 });
@@ -70,10 +84,10 @@ window.addEventListener('load', function() {
   <article class="hentry">
     <div id="table-of-contents" class="toc-sticky">
       <div id="table-of-contents-header" class="toc-header">
-        Contents (click to collapse)
+        Contents (click to collapse) >>
       </div>
       <div id="table-of-contents-body" class="toc-body">
-        {% include toc.html html=content ordered=false sanitize=true class="toc-list" id="my_toc" h_min=2 h_max=2 %}
+        {% include toc.html html=content ordered=false sanitize=true class="toc-list" id="my_toc" h_min=2 h_max=3 %}
       </div>
     </div>
 
