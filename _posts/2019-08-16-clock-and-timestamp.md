@@ -1,8 +1,8 @@
 
-## Preface
+## 1 Preface
 TBD
 
-## Why do we need clock/timestamp in (distributed) DBMS?
+## 2 Why do we need clock/timestamp in (distributed) DBMS?
 
 为什么需要时钟 -> 因为需要mvcc -> 为什么需要mvcc -> 因为事务需要锁, 需要解决事务冲突冲突
 
@@ -11,7 +11,7 @@ TBD
 节点2可能读不到).
 
 
-## Terminology
+## 3 Terminology
 <!-- more -->
 
 item    | meaning                      | note 
@@ -28,7 +28,7 @@ PT/pt   | physical/machine time        |
 NTP     | network time protocol        |
 QPS     | timestamp query per second   |
 
-## Timestamp Oracle Service
+## 4 Timestamp Oracle Service
 
 Timestamp Oracle Service (TOS), this name was introduced in [Google's percolator](#percolator),
 is a centralized service, it is responsible for generating timestamps for the
@@ -44,7 +44,7 @@ disadvantages, because it's centralized:
 
 <img src="" width="500"/>
 
-## True Time
+## 5 True Time
 
 > TrueTime is a global synchronized clock with bounded non-zero error: it
 > returns a time interval that is guaranteed to contain the clock’s actual time
@@ -70,7 +70,7 @@ Method        | Returns
 它能保证的是取到的时间误差是有限, 并且可以衡量的(这就有点像ntp了, 但是ntp的误差
 比这个大很多, 对于跨全球来说)
 
-## NTP
+## 6 NTP
 
 NTP(network time protocol) 最早由[D. Mills在1981年提出](#ntp version0),
 之后成为计算机时间同步的重要协议.
@@ -146,7 +146,7 @@ how about windows? 我现在手上没有windows...
 在[David L. Mills的论文](#ntp history)中还描述说到, 在21世纪初已经能做到纳秒级别
 的时间同步精度. 时间同步的精度应该不是大问题.
 
-## Logical Clocks and Vector Clocks
+## 7 Logical Clocks and Vector Clocks
 
 Logical Clocks (Lamport Clocks, LC) and Vector Clocks (Vector Time, VC), 本质上都是
 logical clocks, vector clock扩展了logical clocks,
@@ -194,7 +194,7 @@ LC/VC有比较明显的缺点:
 * 不能体现出事件物理时间上的差距, 如果需要知道比如"3天前"的事件, 逻辑时钟就没法
 	做到这个
 
-## Hybrid Logical Clock
+## 8 Hybrid Logical Clock
 
 HLC 综合了物理时间, 基于NTP不需要额外的硬件, 同时加上了一部分逻辑时钟, 所以称之
 为hybrid, HLC算法 克服了LC VC的一些缺点, 使得clock具有物理时间的特性, 同时也能解
@@ -295,7 +295,7 @@ incremented by at least $$d$$, where $$d$$ is a given parameter.
 Theorem 1, 2 and 3 imply the monotonicity of HLC.
 Corollary 1, 3 and 4 show that $$|l - pt|$$ and $$c$$ are bounded.
 
-### HLC offset
+### 8.1 HLC offset
 
 逻辑部分总共16位, 当所有节点机器物理时间一致时, 单机上同个物理时间点的HLC能提供
 65535个timestamp, 物理时间单位是毫秒, 大概每秒能取6千万个timestamp.
@@ -319,7 +319,7 @@ $$
 \text{timestamp_per_second}  = 65535 × 1000 / (1 + x)
 $$
 
-$x$$为offset的毫秒数, 可以看到, ntp offset越大单位时间内获取timestamp 个数越小
+其中$$x$$为offset的毫秒数, 可以看到, ntp offset越大单位时间内获取timestamp 个数越小
 
 顺便说一下, 个人认为[阿里云的博客](http://www.sohu.com/a/317120396_465959)对应章
 节的计算公式是有问题的, 应该要$$+1$$, 而不是直接除以$$x$$.
@@ -362,7 +362,7 @@ timestamp的个数.
 另外, 值得注意的是, 这里是**单机**的性能, 如果请求只是从$$pt$$超前的机器上发到其他
 机器上, 不会有这个所谓的性能问题.
 
-### Recovery
+### 8.2 Recovery
 
 HLC 中有一条比较重要的[性质](#Theorem 2), 这个按照HLC算法的描述其实是显而易见的.
 
@@ -385,7 +385,7 @@ pt <= l
 持久化下来的timestamp小于启动后的hlc时钟, 那么最好是宕机之后等待一小段时间, 比
 如1秒再启动进程.
 
-### Implementation
+### 8.3 Implementation
 
 HLC的实现比较简单, github有一个现成的实现
 
@@ -414,13 +414,13 @@ cockroach/pkg/util/hlc/hlc.go
 	第2种处理方式比较可取, 也有理论验证, 如果有异常了 应该就是ntp时间同步出问题了,
 	就应该当做异常情况处理.
 
-### Application
+### 8.4 Application
 TBD
 
-## Conclusion
+## 9 Conclusion
 TBD
 
-## Reference
+## 10 Reference
 
 <a name="ntp"/>
 [ntp wikipedia](https://en.wikipedia.org/wiki/Network_Time_Protocol)  
