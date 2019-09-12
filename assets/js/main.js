@@ -26,7 +26,8 @@ $(".close-about").click(function () {
 });
 
 // Add lightbox class to all image links
-$("a[href$='.jpg'],a[href$='.jpeg'],a[href$='.JPG'],a[href$='.png'],a[href$='.gif']").addClass("image-popup");
+$("a[href$='.jpg'],a[href$='.jpeg'],a[href$='.JPG'],a[href$='.png'],a[href$='.gif'],a[href$='.svg']").addClass("image-popup");
+$("img[src^='/']").click(function() {window.location.href = this.src})
 
 // Magnific-Popup options
 $(document).ready(function() {
@@ -41,7 +42,7 @@ $(document).ready(function() {
     image: {
       tError: '<a href="%url%">Image #%curr%</a> could not be loaded.',
     },
-    removalDelay: 300, // Delay in milliseconds before popup is removed
+    removalDelay: 50, // Delay in milliseconds before popup is removed
     // Class that is added to body when popup is open.
     // make it unique to apply your CSS animations just to this exact popup
     mainClass: 'mfp-fade'
@@ -96,7 +97,7 @@ var sharing = function(){
     });
 };//sharing
 
-// jumping with offset
+// jump/scroll with offset
 $(document).ready(function() {
   var scroll_time_ms = 600;
   var top_offset = 80;
@@ -129,6 +130,6 @@ $(document).ready(function() {
     }
   }
 });
-// end of TOC jumping with offset
+// end of TOC jump/scroll with offset
 
 // vim: et tw=80 ts=2 sw=2 cc=80:
