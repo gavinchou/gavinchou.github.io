@@ -8,7 +8,9 @@ tags: raft braft graphviz
 
 This is the call graph of [braft](https://github.com/brpc/braft),
 an industrial grade raft implementation, which may help you understand braft
-better, I think.
+better, I guess.
+
+<!-- more -->
 
 I made it several months ago with dot-lang (graphviz), 
 and build the svg with my [graphviz plugin](https://github.com/gavinchou/dot-build-tool),
