@@ -1,6 +1,10 @@
 
 ## 1 Preface
-TBD
+
+这篇文章总结了几个分布式数据库系统中常用的时钟算法, 主要包括: 中心授时服务,
+Google True Time, NTP, Logical clock, HLC.
+
+花了比较大篇幅描述HLC的算法实现以及它的优缺点.
 
 ## 2 Why do we need clock/timestamp in (distributed) DBMS?
 
