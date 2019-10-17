@@ -2,12 +2,13 @@
 layout: post
 title:  "unicode"
 date: 2017-10-30 14:05:42 +0800
-categories: experience summary syntax
+categories: experience summary
 tags: unicode utf8 utf16 replacement char UTF-8 UTF-16 UTF-32
 ---
 
 ## unicode, utf8, utf16, replacement char, UTF-8, UTF-16, UTF-32
-time: 2017-10-30-Mon 14:05:42
+created: 2017-10-30-Mon 14:05:42
+update: 2019-10-17-Thu 22:03:57
 
 ### Unicode, UCS-2, UCS-4,
 
@@ -25,10 +26,10 @@ contains **no code points in the reserved range U+0D800-U+0DFFF**, a UCS-2 text
 is a valid UTF-16 text.
 
 <!-- more -->
-UTF-32 (also referred to as UCS-4) uses four bytes for each character. Like
+UCS-4 (also referred to as UTF-32) uses four bytes for each character. Like
 UCS-2, the number of bytes per character is fixed, facilitating character
-indexing; but unlike UCS-2, UTF-32 is able to encode all Unicode code points.
-However, because each character uses four bytes, UTF-32 takes significantly more
+indexing; but unlike UCS-2, UCS-4 is able to encode all Unicode code points.
+However, because each character uses four bytes, UCS-4 takes significantly more
 space than other encodings, and is not widely used.
 
 ### Unicode planes, 65535 chars per plane, 17 planes total
@@ -191,7 +192,7 @@ next integer following W1.
     proper error reporting and/or recovery is provided.
 
 
-### utf-32
+### UTF-32
 UTF-32 (also known as UCS-4) simply encodes each code point as a 32-bit integer.
 
 ### Unicode, UTF-8, UTF-16 in Java
@@ -249,21 +250,21 @@ Hence, in other word, in Java, there is no other utf8 string will be greater
 than replacement char `U+FFFD`
 
 String of Java is UTF-16 encoded inside JVM, that why Java recognizes UTF-16
-format only when define String with escaping hex code point.
+format only when we define String with escaping hex code point.
 
 ```
 final String s = "\uXXXX\uYYYY"; // x is high surrogate, y is low surrogate
 ```
 
 ### reference
-unicode <https://en.wikipedia.org/wiki/Unicode>  
-unicode specials <https://en.wikipedia.org/wiki/Specials_(Unicode_block)>  
-utf-8 rfc3629 <https://tools.ietf.org/html/rfc3629>  
-utf-8 wikipedia <https://en.wikipedia.org/wiki/UTF-8>  
-unicode plane <https://en.wikipedia.org/wiki/Plane_(Unicode)>  
-BMP (basic multilingual plane) <https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane>  
-where is my character <http://www.unicode.org/standard/where/>  
-find char by hex code point <http://www.unicode.org/charts/index.html>  
-unicode converter <https://www.branah.com/unicode-converter>  
-utf-16 rfc2781 <https://tools.ietf.org/html/rfc2781>  
-utf-32 rfc5198 <https://tools.ietf.org/html/rfc5198>  
+[unicode](https://en.wikipedia.org/wiki/Unicode)  
+[unicode specials](https://en.wikipedia.org/wiki/Specials_(Unicode_block))  
+[utf-8 rfc3629](https://tools.ietf.org/html/rfc3629)  
+[utf-8 wikipedia](https://en.wikipedia.org/wiki/UTF-8)  
+[unicode plane](https://en.wikipedia.org/wiki/Plane_(Unicode))  
+[BMP (basic multilingual plane)](https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane)  
+[where is my character](http://www.unicode.org/standard/where/)  
+[find char by hex code point](http://www.unicode.org/charts/index.html)  
+[unicode converter](https://www.branah.com/unicode-converter)  
+[utf-16 rfc2781](https://tools.ietf.org/html/rfc2781)  
+[utf-32 rfc5198](https://tools.ietf.org/html/rfc5198)  
