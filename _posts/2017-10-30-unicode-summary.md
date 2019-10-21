@@ -7,8 +7,8 @@ tags: unicode utf8 utf16 replacement char UTF-8 UTF-16 UTF-32
 ---
 
 ## unicode, utf8, utf16, replacement char, UTF-8, UTF-16, UTF-32
-created: 2017-10-30-Mon 14:05:42
-update: 2019-10-17-Thu 22:03:57
+created: 2017-10-30-Mon 14:05:42  
+update: 2019-10-17-Thu 22:03:57  
 
 ### Unicode, UCS-2, UCS-4,
 

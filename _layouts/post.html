@@ -12,7 +12,7 @@
 {% include browser-upgrade.html %}
 {% include header.html %}
 
-<!-- should put to scss -->
+<!-- TODO: should put to scss -->
 <style>
 .toc-sticky {
   position: -webkit-sticky;
@@ -64,6 +64,7 @@ padding-left: 1em;
 
 <script>
 // window load is later than jquery's $(document).ready
+var lastTocWidth = "15em"
 window.addEventListener('load', function() {
   document.getElementById("__table-of-contents-header")
     .addEventListener("click", function() {
@@ -71,14 +72,17 @@ window.addEventListener('load', function() {
       if (content.style.display === "none") {
         content.style.display = "block";
         this.textContent = "Contents (click to collapse) >>";
-        document.getElementById("__table-of-contents").style.width = "15em";
+        document.getElementById("__table-of-contents").style.width = lastTocWidth
       } else {
+        lastTocWidth = document.getElementById("__table-of-contents").style.width
         content.style.display = "none";
         // this.textContent = "<< Contents (click to view)";
         this.textContent = "<< ";
         document.getElementById("__table-of-contents").style.width = "2em";
       }
   });
+  // southwest and south are not adjustable
+  $("#__table-of-contents").resizable({handles : "w"}) 
 });
 </script>
 
