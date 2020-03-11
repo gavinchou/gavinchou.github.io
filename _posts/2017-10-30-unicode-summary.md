@@ -84,6 +84,8 @@ Char. number range  |        UTF-8 octet sequence
 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 ```
 
+UTF-8 can encode up to 21 bits (2,097,152 unicode code points).
+
 #### Encoding a character to UTF-8
 
 1.    Determine the number of octets required from the character number
@@ -120,11 +122,18 @@ Char. number range  |        UTF-8 octet sequence
 
 
 ### UTF-16
+Similar to UTF-8, UTF-16 is also variant-length encoding.
+UTF-16 represents each code point by one or two sequences of two bytes.
 
-UTF-16 is compatible with unicode plane 0, if unicode point larger than `0xFFFF`,
-encode the unicode as 4 bytes using `[0xD800, 0xDBFF]` as first surrogate pair,
-and `[0xDC00, 0xDFFF]` as second surrogate pair, UTF-16 can encode up to 20
-bits (less than UTF-8 21 bits).
+UTF-16 is compatible with unicode plane 0 (2 bytes, 65536 code points), which
+also means it is compatible with UCS-2.
+
+If unicode code point larger than `0xFFFF`, encode the unicode as 4 bytes using
+`[0xD800, 0xDBFF]` as first surrogate pair, and `[0xDC00, 0xDFFF]` as second
+surrogate pair, each surrogate holds up to 10 bits;
+
+UTF-16 can encode up to 20 bits (1,048,576 code points, less than UTF-8
+2,097,152 code points (21 bits)).
 
 #### Encoding UTF-16
 
@@ -151,6 +160,8 @@ are not allocated yet).
 Graphically, steps 2 through 4 look like:
 
 ```
+// 20-bit code points to encode
+//   MSB              LSB
 U' = yyyyyyyyyyxxxxxxxxxx
 // [D800, DBFF]
 W1 = 110110yyyyyyyyyy
@@ -255,6 +266,31 @@ format only when we define String with escaping hex code point.
 ```
 final String s = "\uXXXX\uYYYY"; // x is high surrogate, y is low surrogate
 ```
+
+### Unicode in C++
+
+Unicode Study Group (SG16)
+
+```
+std::basic_string<char8_t> utf8 {u8"utf8 string"}; // c++20
+std::basic_string<char16_t> utf16 {u"utf16 string"}; // c++11
+std::basic_string<char32_t> utf32 {U"utf32 string"}; // c++11
+```
+
+UTF-16 and UTF-32 are supported since c++11, 2010.
+UTF-8 will be supported in c++20
+
+However `std::regex` does not support any unicode strings...
+Hana's CTRE may help, C++23.
+
+P1433R0
+
+### Conclusion
+UTF-16 is more efficient than UTF-16 when the text is mostly CJK characters,
+because the the charater code points are most beyond 127.
+UTF-8 is more efficient for alphabetical text.
+
+Java uses UTF-16 for `String` type inside JVM for printing.
 
 ### reference
 [unicode](https://en.wikipedia.org/wiki/Unicode)  

@@ -187,7 +187,53 @@ cache line的值都能达到一致的状态, 这个有点类似于分布式中�
 > 	 invalidated or Modified and then Shared?
 
 这个东西很难, 但是看起来这两个问题对Intel来说很轻松就做到了?
-这是一个专家对以上问题的[解答](#how intel cache coherence works)
+这是一个专家对以上问题的[解答(how intel cache coherence works)](#how intel cache coherence works)
+
+> Intel does not document the details of its coherence protocols, but the
+> ordering model is described in some detail in Section 8.2 of Volume 3 of the
+> Intel Architectures Software Developer's Manual (Intel document 325384).
+>
+> The details of the implementation of the coherence protocol (and its
+> associated ordering model) differ across processor models, and can differ
+> based on configuration settings (e.g., Home Snoop vs Early Snoop on Haswell
+> EP, or 1-socket vs 2-socket vs 4-socket configurations).  In addition, some
+> coherence transactions can be handled in different ways, with the choice made
+> dynamically at run time.
+> 
+> The most interesting details usually pop up in the Uncore Performance
+> Monitoring Guides for the various processor models.  Understanding the
+> implications of these details requires significant experience in
+> microarchitecture and microbenchmarking, though there are many aspects of
+> Intel's implementations that are probably too hidden to be fully understood by
+> anyone who does not have access to the actual processor RTL (or whatever
+> high-level-design language Intel uses these days).
+> 
+> The short answer to #1 is that coherence processing is serialized at the
+> various coherence agents.  For example, if two cores execute a store
+> instruction in the same cycle and both miss in their L1 and L2 caches, then
+> the transaction will go to the L3 slice (or CHA in some processors)
+> responsible for that address, which will process the incoming requests
+> sequentially.  One or the other will "win" and will be granted exclusive
+> access to the cache line to perform the store.  During this period, the
+> request from the "losing" core will be stalled or rejected, until eventually
+> the first core completes its coherence transaction and the second core's
+> transaction is allowed to proceed.   There are many ways to implement the
+> details, and Intel almost certainly uses different detailed approaches in
+> different processor models. 
+> 
+> The short answer to #2 is that also that the transactions will be serialized.
+> Either the owning processor will complete the store, then the line will be
+> transferred to the reading processor, or the cache line will be transferred
+> away from the owning processor to the reading processor first, then returned
+> to the (original) owning processor to complete the store.  Again, there are
+> many ways to implement the low-level details, and Intel processors implement
+> several different approaches.  If I am reading between the lines correctly,
+> recent Intel chips will use different transactions for this scenario depending
+> on how frequently it happens to a particular address.  (E.g., See the
+> description of the HitMe cache in the Xeon E5/E7 v3 processor family uncore
+> performance monitoring guide, document 331051.)
+> 
+> "Dr. Bandwidth"
 
 ### 3.5 Conclusion of CPU cache
 
@@ -1969,7 +2015,7 @@ control_block_ptr->refs.fetch_add(1, memory_order_relaxed);
 Decrement
 
 ```c++
-if (control_block_ptr->refs
+if (!control_block_ptr->refs
       .fetch_sub(1, memory_order_acq_rel)) { // key
   delete control_block_ptr;
 }
@@ -1981,10 +2027,10 @@ Decrement can be `acq_rel` (both acq+rel necessary, probably sufficient).
 
 Let's analyse the wrong one that `fetch_sub` uses pure `memory_order_release`.
 
-VS2012's bug with ARM architecture, x86-64 is much stronger they are OK with it.
+VS2012's bug with ARM architecture, x86-64 is much stronger it's OK with it.
 
 ```c++
-if (control_block_ptr->refs
+if (!control_block_ptr->refs
       .fetch_sub(1, memory_order_release)) { // buggy
   delete control_block_ptr;
 }
@@ -1995,7 +2041,7 @@ e.g, wrong memory order, pure `release`, consider 2 threads need to decrement
 ```
 // Thread 1, 2->1                      |    // Thread 2, 1 -> 0
 // A: use of object                    |    :::
-if (control_block_ptr->refs            |    if (control_block_ptr->refs
+if (!control_block_ptr->refs           |    if (!control_block_ptr->refs
       .fetch_sub(                      |          .fetch_sub(
         1, memory_order_release)) {    |            1, memory_order_release)) {
   // branch not taken                  |       delete control_block_ptr; // B
@@ -2021,7 +2067,7 @@ To figure it out, we need to some transformations that compiler and CPU will
 do with the pure `release` semantics.
 
 Transformation 1, break thread 1 into pieces (the load and store is for
-demonstration, they actually may be a single instruction on some hardware)
+demonstration, they actually may be a single instruction on some hardwares)
 
 ```
 // Thread 1, 2->1
