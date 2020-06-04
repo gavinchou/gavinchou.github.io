@@ -1247,9 +1247,9 @@ We can conclude the strength of constraints of the memory ordering as follows:
 an arrow A -> B means constraint of B is stronger than A
 ```
 
-**And we should note that, by definition in the c++ standard and [acquire and release semantics](#acquire and release semantics),
+**And we should note that, by definition in the c++ standard of [acquire and release semantics](#acquire and release semantics),
 `memory_order_consume` and `memory_order_acquire` will not make sense for atomic
-release operations; `memory_order_release` will not make sense for atomic store
+load operations; `memory_order_release` will not make sense for atomic store
 operations.**
 
 ```c++
