@@ -1826,12 +1826,17 @@ void slist<T>::pop_front() {
   // move head pointer "backwards" if we see the head
   while (p != nullptr
          && !head.compare_exchange_weak(p, p->next)) { }
-  delete p; // delete may be not necessary
-            // expose p to user as a return val
+  // problem:
+  // ABA and dereferrencing deleted p by p->next in other threads after deletion
+  delete p;
 }
 ```
 
-It seems that works fine, but there is an ABA problem:
+It seems that works fine, but there are problems:
+1. ABA problem
+2. Deference deleted pointer
+
+case for ABA problem:
 
 ```
 Initial state:
@@ -1841,16 +1846,18 @@ Initial state:
 
 Modify the list:
 
-   |     Thread 1                Thread 2                    Thread3
-   |     // pop                  // pop                      // push
+   |     Thread 1                Thread 2                   Thread3
+   |     // pop                  // pop                     // push
    t
    i     head = 5
    m t1 -------------------------------------------------------------
    e                             head = 5
-                                 CAS(5, 4)
-   l t2 -------------------------------------------------------------
-   i                                                         push 9
-   n                                                         push 5
+   |                             CAS(5, 4)
+   | t2 -------------------------------------------------------------
+   |                                                        head = 4
+   l                                                        CAS(4, 9)
+   i                                                        head = 9
+   n                                                        CAS(9, 5)
    e t2 -------------------------------------------------------------
    |     CAS(5, 4)
    | t4 -------------------------------------------------------------
@@ -1865,9 +1872,39 @@ t4:
 
 ```
 
-> Where there is a problem, there is a solution...
+case for dereferencing deleted pointer problem
+(thread 2 dereference a mangling pointer deleted by thread 1):
 
-Well, I said it.
+```
+// for convinence of explaination, pop_front() also can be written as
+template<typename T>
+void slist<T>::pop_front() {
+  auto p = head.load();
+  do {
+    p = head.load();
+    auto n = p->next; // dereference p, which is mean to be head
+  } while (p != nullptr && !head.compare_exchange_weak(p, n));
+  delete p;
+}
+
+// think of 2 concurrent pops, vertical direction shows in which time elapses
+
+//  thread 1                               |  thread 2
+                                           |
+void slist<T>::pop_front() {               | void slist<T>::pop_front() {
+  auto p = head.load();                    |   auto p = head.load();
+  do {                                     |   do {
+    p = head.load();                       |
+    auto n = p->next;                      |     p = head.load();
+  } while (p != nullptr                    |
+    && !head.compare_exchange_weak(p, n)); |
+  delete p;                                |
+}                                          |      auto n = p->next; // BANG!
+                                           |    } while (p != nullptr
+                                           |      && !head.compare_exchange_weak(p, n));
+                                           |    delete p;
+                                           v  }
+```
 
 There are some (common and may be more) hints to solve the ABA problem:
 
@@ -1890,20 +1927,22 @@ There are some (common and may be more) hints to solve the ABA problem:
 > 	* But: It's very intricate. Tread with caution.
 > 5. ...
 
-It's getting complicated and hard, and of course, if we don't recycle memory it
-won't be any ABA problem at all! :smirk: Think about it and don't recycle
+It's getting complicated and hard, and of course, if we don't recycle memory
+there won't be any ABA problem at all! :smirk: Think about it and don't recycle
 anything if you push a lot and pop is much less, it will work well.
 
 There is an attempt for option 1, 2 and 4
 <https://stidio.github.io/2017/01/cpp11_atomic_and_lockfree_program/>, it may
-a bit more complicated, I will discus it in future post
+be a bit more complicated, I will discus it in future post
 (lock-free application series?), if I had time and found that this topic is
 still interesting.
 
 For option 3, here is an attempt, apparently this attempt has hardware
-limitation. The core idea is using a separate head structure with version,
-compare the content of the head instead of pure address which may be changed
-without notifications.
+limitation. The idea is using a separate head structure with version.
+<font color="#ff0000">
+Comparing the content of the head instead of pure address which may be changed
+without notifications, which is the essence of solving the ABA problem.
+</font>
 
 ```c++
 template <typename T>
@@ -1928,21 +1967,27 @@ void slist<T>::push_front(const T& t) {
   do {
     p->next = h.ptr;
     p->t = t;
-    HeadNode new_head {h.ver + 1, p}; // increment ver
-  } while (!head.compare_exchange_weak(h, new_head)) { }
+    HeadNode new_head {h.ver + 1, p}; // increase ver
+  } while (!head.compare_exchange_weak(h, new_head));
 }
 
 template<typename T>
 void slist<T>::pop(const T& t) {
   auto h = head.load();
-  do {
-    HeadNode new_head {h.ver + 1, h.ptr}; // increment ver
-  } while (!head.compare_exchange_weak(h, new_head)) { }
+  do { // does not dereference the pointer to data
+    HeadNode new_head {h.ver + 1, h.ptr}; // increase ver
+  } while (!head.compare_exchange_weak(h, new_head));
   delete h.ptr;
 }
 ```
 
-However, it's not perfect, it may not work as lock-free on all hardware due to
+It resolves the problems I mentioned before:
+* every time the head has been updated, version of head increased, ABA problem
+	resolved
+* we don't dereference any pointers in the linked list,
+	porblem of dereferencing deleted pointer resolved
+
+However, it's not perfect, it may not work as lock-free on all hardwares due to
 the "big" structure `NodeHead`, some hardware may not have large enough
 register, here may be 128 bits, to complete CAS within one instruction.
 To check if it works, the simplest way may be using
