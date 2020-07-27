@@ -63,6 +63,13 @@ This post covers the following questions
 5. 这里没说Intel的[hyper threading技术](https://en.wikipedia.org/wiki/Hyper-threading)
 	 就是一个物理核上有俩逻辑核, 跟本文没关系不描述了
 
+一般来说, 一个核把其处理的数据写到了L1d上, 其他核就对该数据可见了, 这是由cache
+coherence 来保证的. 另外, 其他核可见是可见了, 但是并不保证其他核对这个数据的可见
+顺序, 比如说有个核写了2个数据(a = 0, b = 1)到L1d, 有的核可能先看
+先看到a = 0, 然后看到 b = 1; 有的核先看到了 b = 1, 然后看到 a = 0.
+
+这两个点都是后文要描述的.
+
 ### 3.1 Cache line
 
 > Data is transferred between memory and cache in blocks of fixed size, called
@@ -235,12 +242,95 @@ cache line的值都能达到一致的状态, 这个有点类似于分布式中�
 > 
 > "Dr. Bandwidth"
 
-### 3.5 Conclusion of CPU cache
+cache coherence 解决的是核之间数据可见性的问题, 但是并没有解决可见顺序的问题,
+顺序问题也是本文要着重要阐述说明的问题.
+
+### 3.5 Store buffer
+
+在CPU上除了除了L1 cache, 其实还有更靠近CPU的跟数据相关的"cache",
+一个是 load buffer, 一个是store&forward buffer(一般就叫做store buffer).
+注意看下图中蓝线连接的部分.
+
+<img name="" src="/images/memory-ordering/cpu_core_detail.png" widht="800"/>
+
+这两个buffer是上图中② out of order engine中的一部分, 顾名思义就是跟乱序执行有关
+系.
+
+数据读取(load buffer)跟不影响数据对外的可见性, 但是store buffer会,
+数据从CPU的store buffer出来到cache, 上其他核就可以看到该数据.
+
+store buffer类似于一个队列, 但是大小是按照entry计算不是按照bits计算的.
+上图的例子是56 entries, 一般来说 store buffer的size 是load buffer的 2/3, 因为大
+多数程序读别写多.
+
+开了超线程(hyper-threading), store buffer这些资源就要等分成两份, 分别给两个逻辑
+核使用.
+
+> The following resources are shared between two threads running in the same
+> core:
+> * Cache
+> * Branch prediction resources
+> * Instruction fetch and decoding
+> * Execution units
+>
+> Hyperthreading has no advantage if any of these resources is a limiting factor
+> for the speed.
+
+CPU操作数据变更之后并不会立即写到L1d上, 而是先写到store buffer上,
+然后尽快写到L1d cache, 比如如下代码
+
+```
+int sum = 0;
+for (int i = 0; i < 10086; ++i) {
+  sum += i;
+}
+```
+
+`sum` 完成一次赋值之后不会立即写到L1d上, 可能会在store buffer上等一段时间, 然后
+第二次又赋值之后才从store buffer刷到L1d上. 这样做是为了提高效率,
+预测器(speculator), 把两个相加语句先执行了, 然后再写到L1d里, 这样就好像把
++1 +2 两条的结果直接合并成+3一次写到L1d里, 节省了写cache的时间.
+
+根据store buffer的特点, 再举一个例子, store buffer会引起"乱序"的问题
+
+<a name="reordering caused by store buffer" />
+```
+// global ini
+int a = 0;
+int b = 0;
+
+// thread 1                  |           // thread 2
+t1:                          |           t2:
+a = 1;                       |           b = 1;
+if (b == 0) {                |           if (a == 0) {
+  // do something            |             // do something
+} else {                     |           } else {
+  goto t1; // retry          |             goto t2; // retry
+}                            |           }
+```
+
+上述代码执行完之后, 两个线程都能同时走到 "do something" 的逻辑里, 因为thread 1
+在写a = 1之后, 数据在store buffer里, 对thread 2其实是不可见的, 这个时候thread
+2看到的还是a == 0, 同理, thread 2写完b = 1 会在store buffer里停留一段时间,
+thread 1 也看到 b == 0, 这样两个线程都认为自己可以进入到"do something" 的逻辑里.
+
+这个其实是著名的"Peterson's and Dekker's algorithm"(互斥锁),
+上述例子也阐述了这个算法在现代CPU架构上这么做是不可行的.
+
+需要让该算法正确运行, 把a b 替换成 atomic 即可, 因为atomic 引入了memory model的
+可见性顺序保证, 能够保证thread 1的数据写了之后把数据从store buffer刷出到cache 并
+且同步到其他核, thread 2看到的是线性一致的最新的数据, 后文会详细说明这其中的原因
+和原理.
+
+### 3.6 Conclusion of CPU cache
 
 CPU cache加快了执行的速度, 但是也引入了额外的使用问题, CPU cache本身的实现逻辑就
-很复杂, 即使实现了cache coherence, 只要有cache 的存在在多个核共同工作的环境下还
-是会有各个核对内存可见性的问题, 再加上编译器和CPU的优化, 问题就显得更加复杂了,
-我们使用高级语言所写的程序到真正执行的时候也许已经不是我们想象的那样了.
+很复杂, 即使实现了cache coherence, 由于store buffer的存在, 只要有多个核共同工作
+的环境下还 是会有各个核对内存可见顺序的问题, 再加上编译器和CPU的优化, 问题就显得
+更加复杂了, 我们使用高级语言所写的程序到真正执行的时候也许已经不是我们想象的那样
+了.
+
+接下来, 本文将阐述数据可见性顺序的问题以及如何解决.
 
 ## 4 Instruction reordering
 
@@ -388,9 +478,11 @@ CPU的hardware memory model, 这个[文章](#hardware memory models)有比较详
 2. 大概分为两大类型, weak & strong
 	1. weak hardware memory model: ARM, Itanium, PowerPC, 对指令重排没有太多"限制",
 		我们前边提到的CPU cache的复杂架构和实现对增加内存的可见性(顺序)的复杂度贡献
-		还是很大的
+		还是很大的, 但是正是这些比较少的限制, 可以使软件开发人员有更多的选择来实现性
+		能优化.
 
-	2. strong hardware memory model: x86-64 family, 限制了很多类型的指令重排
+	2. strong hardware memory model: x86-64 family (Intel and AMD),
+		限制了很多类型的指令重排
 
 		> A strong hardware memory model is one in which every machine instruction
 		> comes implicitly with acquire and release semantics. As a result, when one
@@ -399,7 +491,7 @@ CPU的hardware memory model, 这个[文章](#hardware memory models)有比较详
 
 		一个核有一个instruction stream, 假设其中有n个对内存write操作, 如果执行到第k
 		个write指令时, 前k-1个write都能被其他核观察到, 并且其他核观察到的这个k个
-		write的顺序和在本核上的顺序是一致的. 要保证这个是有一定的消耗的, 因为有CPU
+		write的顺序和在本核上的顺序是一致的. 要保证这个是有一定的性能损耗, 因为有CPU
 		cache的存在, 增加了这个可见性的难度, strong model在一定程度上也限制了优化.
 
 3. 即使是同为weak/strong, 本身差别也很多, 因为指令集千差万别, 同个指令集的指令组
@@ -407,9 +499,11 @@ CPU的hardware memory model, 这个[文章](#hardware memory models)有比较详
 
 4. **_但是_**, 不管是哪种架构的CPU, CPU指令重排都遵循一定的规则, 这些规则就写在
 	 了各个CPU的使用手册里, 这些手册是系统(OS)开发人员必须读的.
+5. 对于Intel等x86系列的CPU, 对应厂商的思路是, 只要我单条指令执行的够快, 就不用太
+	 担心优化的问题.
 
-BTW, 上述2.2中提到一个概念"acquire and release semantics",
-I will talk about this [later](#acquire and release semantics)).
+上边总结2.2中提到一个概念"acquire and release semantics",
+会在[后续章节](#acquire and release semantics)展开描述.
 
 -----
 
@@ -523,7 +617,7 @@ void thread1_func() {
     while (random(rng) % 8 != 0) {}
 
     X = 1;
-    // Prevent compiler reordering explicitly only
+    // Prevent compiler reordering explicitly
     asm volatile("" ::: "memory");
     r1 = Y;
 
@@ -534,7 +628,7 @@ void thread1_func() {
 <a name="code 4"/>
 code 4. thread1_func
 
-thread2的过程和thread1类似, 不在此赘述.
+thread2的过程和thread1类似, 把1换成2, 把X换成Y即可, 不在此赘述.
 
 main函数如下, 主要是模拟两个线程在两个核上同时执行,
 
@@ -599,17 +693,16 @@ gotcha! 5516 reorders detected after 580264 iterations
 #### 4.2.2 Intel x86-64 family reordering specification
 
 **This section first introduces what kind of runtime reordering is allowed and
-what is not, and then introduce some critical for core/cache synchronization.**
+what is not, and then introduces some critical for core/cache synchronization.**
 
-Most of the content is copied from [Intel's developer manual volume 3 §8.2](#intel volume 3),
-hence, quotation is omitted in this section.
+Most of the content is copied from [Intel's developer manual volume 3 §8.2](#intel volume 3).
 I put it here not only for a reference purpose but also for a demo of
 [hardware memory model](#hardware memory models).
 x86-64 is the most popular processor, it can be a representative for other CPUs.
 
 -----
 
-Different CPU architectures  have different
+Different CPU architectures have different
 [hardware memory models](#hardware memory models),
 the modern Intel CPU families: Intel Core 2 Duo, Intel Atom, Intel Core Duo,
 Pentium 4, and P6, use so called strong hardware memory order model.
@@ -670,7 +763,10 @@ for detailed instruction reordering examples.
 
 In summary, for simple store/load instructions, I haven't talked about string
 instructions yet, the only CPU reordering case is:
-**Loads May Be Reordered with Earlier Stores to Different Locations**
+
+<font color="#ff0000" style="bold">
+Loads May Be Reordered with Earlier Stores to Different Locations**
+</font>
 
 ```
 Processor 0                      |         Processor 1
@@ -826,8 +922,9 @@ reordering和runtime reordering.
 <a name="Sequential Consistency"/>
 ### 5.1 Sequential Consistency
 
-说到`Acquire and Release semantics`, 就需要提一下"Sequential Consistency"
-(顺序一致)这个概念, 这个概念是Lamport大神在1979年发明的, 一般在分布式系统里用的比较多,
+讲完`Acquire and Release semantics`, 就需要详细讲一下"Sequential Consistency"
+(顺序一致)这个概念, 这个概念是Lamport大神在1979年提出的,
+一般在分布式系统里用的比较多,
 但是一个multi-core CPU+内存何尝不是一个非常典型的multiprocessing system呢?
 
 > Leslie Lamport, 1979, who defined that a multiprocessing system had sequential
@@ -902,7 +999,8 @@ code 8. demo of sequential consistency in C++
 不管在总体时序上每个指令在各个线程是如何交织(interleaving)的, [code 8](#code 8)
 中, 对于所有的变量(例子中的都是原子变量), 都使用了`std::memory_order_seq_cst`,
 意思就是说对于说有相关的变量(包括上下文出现的变量)在编译优化时不能破坏
-sequential consistency.
+sequential consistency,
+同时在生成的CPU指令里加入一些额外的同步指令使其在运行时也到保证.
 所以无论程序以何种方式运行, [code 8](#code 8)最后一行`assert`都会成立, 并且各个
 线程只看到同一个程序执行顺序的total order.
 
@@ -912,20 +1010,87 @@ sequential consistency.
 从全局来看是两个完全相反的执行顺序, 就是说"store to x"和"store to y"的执行效果的
 在各个核的可见性是不统一的, 这是一种data race的表现.
 
-但是如果把上述的memory order换成`load acquire` + `store release`, 最后的`assert`
-就不一定会成立了(虽然很难复现).
+但是如果把上述的memory order换成`relaxed` 或者
+`load acquire` + `store release`, 最后的`assert` 就不一定会成立了(虽然很难复现).
+
+操作原子变量时,
+relaxed确保的是 对内存的操作都是原子可见, 核内不进行reorder限制,
+同时核之间的同步性能损耗最少,
+可能只需要在RMW时, 部分lock一下总线即可, 不是相同地址的操作还是可
+以往总线上读写, 这个同步的过程对总线利用比较高.
+
+acquire或者release 语义在保证原子性的同时还限制本核内的reorder行为,
+但并不会进行多核同步(同relaxed), 多核之间可见性的行为限制不了,
+所以使用这两个语义也达不到顺序一致的效果.
+
+seq_cst除了保证relaxed的原子性以及本核内的reorder行为(acqure+release),
+同时还确保本核对其他核同步时, 使用时总线达到一个"独占"的效果,
+显然, 这个同步的过程时间相对比较长.
+
+load acquire 和 store release 只能保证一个核的序不能保证全局序,
+relaxed, acquire 以及 release 只能保证原子性, 以及本核上对应语义的序, 但是不能保
+证其他核看到本核同步结果的顺序. 而seq_cst在同步结果时向其他核进行同步, 确定了一
+个全局序.
+
+下图解释了 thread c 和 thread d 两个线程可能看到的 x y的顺序不一样,
+a 完成x=1之后向其他核同步结果, 同时 b 完成y=1也向其他核同步结果, 但是这个同步的
+过程并不确保所有的核在"同一时间"内都看到了自己写的值.
+c 先看到了 a 的结果, 然后看到了b的结果, 所以认为 x 先写了.
+d 先看到了 b 的结果, 然后看到了a的结果, 所以认为 y 先写了.
+
+c和d对于序的理解冲突了, 要理解这个原因, 我们简化模型, 考虑a在写x=1时,
+b也在同时写 y=1, 而片上总线是同一个, 这就和我们并发操作同个数据类似,
+core3 先看到 x=1 后看到 y=1
+core4 先看到 y=1 后看到 x=1
+
+<a name="on chip network"/>
+```
+thread a         thread b          thread c         thread d
++-----+          +-----+           +-----+          +-----+
+|core1|          |core2|           |core3|          |core4|
+|     |          |     |           |     |          |     |
++-----+          +-----+           +-----+          +-----+
+  x=1              y=1              x==1?            y==1?
+   |                |               ^ ^              ^ ^
+   |                |               | |              | |
+   \________________|_______________/ |              | |
+    \               |                 |              | |
+     \              \_________________|______________/ |
+      \              \                |                |
+       \______________\_______________|________________/
+                       \              |
+                        \_____________/
+
+```
+
+如果加上了全局序的限制(seq_cst), 一个可能的序如下,
+各个核都会先看到x=1, 然后才看到y=1, 各个核都会认同这个序.
+
+```
+thread a         thread b          thread c         thread d
++-----+          +-----+           +-----+          +-----+
+|core1|          |core2|           |core3|          |core4|
+|     |          |     |           |     |          |     |
++-----+          +-----+           +-----+          +-----+
+  x=1              y=1              x==1?            y==1?
+   |                |               ^ ^              ^ ^
+   |                |               | |              | |
+   \________________|_______________|_|______________/ |
+                    |                 |                |
+                    |                 |                |
+                    \_________________|________________/
+```
 
 (这个例子几乎对所有支持SC memory model的语言都成立, 比如rust)
 
 sequential consistency在有些时候, 可能会有性能瓶颈, 因为它需要确保操作在所有线程
-之前全局同步.
+之前全局同步, 一些操作需要进行排队吞吐就降低了.
 
-C++ 11默认的memory model就是sequential consistency, I will talk about this
-[later](#cross ref needed).
+C++ 11默认的memory model就是sequential consistency, [后文会进行详细描述](#cross ref needed).
 
-
-Herb给了两个更加直观简单例子来描述SC, 不管执行顺序如何, 全局所有线程看到一个共
-同的顺序(total order)
+为了加深印象,
+我们再来看Herb举的两个描述SC更加直观简单例子, 不管执行顺序如何, 全局所有线程看
+到一个相同的顺序(total order).
 
 Transitivity/causality: x and y are std::atomic, all variables initially zero.
 
@@ -995,6 +1160,8 @@ relese semantics.
 <img src="/images/memory-ordering/full_fence.png" width="500"/>  
 
 Nothing goes up and nothing goes down.
+
+Sequential consistency is usually implemented with full fence.
 
 -----
 
@@ -2380,7 +2547,21 @@ pointer and reference counting technique.
 
 Learn from others! This lock-free lib is written in C, may lack of portibility.
 
-> [linus store buffer](https://yarchive.net/comp/linux/store_buffer.html)
+> [linus' comment on  store buffer](https://yarchive.net/comp/linux/store_buffer.html)
+> [store buffer](https://stackoverflow.com/questions/54876208/size-of-store-buffers-on-intel-hardware-what-exactly-is-a-store-buffer )
+
+Some disscusion on store buffer.
+
+> [A primer on memory consistency and cache coherence]()
+
+一本书, 有pdf版本.
+从硬件设计的角度阐述如何设计原子指令, 硬件的内存模型是什么, 如何保证内存模型的
+正确性
+
+> [C++ Concurrency in Action, 2nd Edition]()
+
+一本书, 有pdf版本.
+C++ 并行编程, 有锁无锁, 内存模型讲的比较清楚. 附带了一些例子.
 
 ### 13.2 Videos and talks
 > [CppCon 2014: Herb Sutter "Lock-Free Programming" 1/2](https://youtu.be/c1gO9aB9nbs)  
