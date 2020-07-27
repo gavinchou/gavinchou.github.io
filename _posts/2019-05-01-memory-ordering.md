@@ -765,7 +765,7 @@ In summary, for simple store/load instructions, I haven't talked about string
 instructions yet, the only CPU reordering case is:
 
 <font color="#ff0000" style="bold">
-Loads May Be Reordered with Earlier Stores to Different Locations**
+Loads May Be Reordered with Earlier Stores to Different Locations
 </font>
 
 ```
@@ -962,17 +962,21 @@ figure 6. shows that what is sequential consistency and what is not
 ```c++
 std::atomic_bool x, y;
 std::atomic_int z;
+
 void write_x() {
   x.store(true, std::memory_order_seq_cst); //2
 }
+
 void write_y() {
   y.store(true, std::memory_order_seq_cst); //3
 }
+
 void read_x_then_y() {
   while (!x.load(std::memory_order_seq_cst));
   if (y.load(std::memory_order_seq_cst)) //4
     ++z;
 }
+
 void read_y_then_x() {
   while (!y.load(std::memory_order_seq_cst));
   if (x.load(std::memory_order_seq_cst)) //5
@@ -1744,57 +1748,50 @@ In my point of view, **it's the key factor to ensure your lock-free program is
 correct iff what you operate is what you want to operate, even if it keeps
 changing all the time**
 
-### 11.1 Definition, what is lock free
+### 11.1 Definition - what is lock-free
 
-Strengths of lock-freedom
+> The Lock-Free property guarantees that at least some thread is doing progress
+> on its work. In theory this means that a method **may take an infinite
+> amount** of operations to complete, but in practice it takes a short amount,
+> otherwise it won't be much useful.
+>
+> Definition: A method is Lock-Free if it guarantees that infinitely often some
+> thread calling this method finishes in a finite number of steps.
+> 
+> The Wait-Free property guarantees that any given thread provided with a
+> time-slice will be able to make some progress and eventually complete. It
+> guarantees that **the number of steps is finite**, but in practice it may be
+> extremely large and depend on the number of active threads, which is why there
+> aren't many practical Wait-Free data structures.
+>
+> Definition: A method is Wait-Free if it guarantees that every call finishes
+> its execution in a finite number of steps.
 
-* Lock-free, strongest, "no one ever waits"
+The above is quoted from [this article](#lock-free definition), which is
+explained very well.
+
+To understand it in a simple way,
+I put strengths of lock-freedom and properties as following:
+
+* Not lock-free
+	* explicit lock/mutex
+* Lock-free, "someone makes progress"
 	* no explicit lock/mutex
-	* every operation will complete in a bounded #steps no matter what else is
-		going on
-	* guaranteed system-wide throughput + starvation-freedom
-* Wait-free, "some one make progress"
 	* every step taken achieves global progress (for some sensible definition of
 		progress)
+	* guarantee system-wide throughput
+* Wait-free, "no one ever waits"
+	* every operation will complete in a bounded #steps no matter what else is
+		going on
+	* guarantee system-wide throughput and starvation-freedom
 	* all wait-free algorithms are lock-free, but not vice versa
-* Obstruction-free, weakest, "progress if no interference"
-	* at any point, a single thread executed in isolation (i.e., with all
-		obstruction threads suspended) for a bounded number of steps will complete
-		its operation
-	* no thread can be blocked by delays or failures of other threads
-	* doesn't guarantee progress while two or more threads run concurrently (e.g.,
-		deadlock is impossible, but livelock could be possible).
-	* all lock-free algorithms are obstruction-free, but not vice versa
 
-wait-free => lock-free => obstruction-free
-
-wait-free ?=> obstruction-free
+When we say that a particular data structure is Lock-Free it means that all its
+operations are Lock-Free, or better.
 
 We should analyse the program to see what kind of "lock-free" it is, program
 without explicit locks is lock-free but performance varies among different
 implementations.
-
-Lock-freedom
-An implementation is lock-free if infinitely many operations finish in any
-infinite execution. In simpler terms, somebody always makes progress, but maybe
-not you. (Also called non-blocking.)
-
-Obstruction-freedom
-An implementation is obstruction-free if, starting from any reachable
-configuration, any process can finish in a bounded number of steps if all of the
-other processes stop. This definition was proposed in 2003 by Herlihy,
-Luchangco, and Moir. In lower bounds (e.g., JayantiTanToueg) this is often
-called solo-terminating.
-
-A method is wait-free if it guarantees that every call finishes its execution in
-a finite number of steps.
-
-A method is lock-free if it guarantees that infinitely often some method call
-finishes in a finite number of steps.
-
-A method is obstruction-free if, from any point after which it executes in
-isolation, it finishes in a finite number of steps (method call executes in
-isolation if no other threads take steps).
 
 #### 11.1.1 Lock-freedom examples
 
@@ -2251,7 +2248,7 @@ if (!control_block_ptr->refs
 e.g, wrong memory order, pure `release`, consider 2 threads need to decrement
 
 ```
-// Thread 1, 2->1                      |    // Thread 2, 1 -> 0
+// Thread 1, 2->1                      |    // Thread 2, 1->0
 // A: use of object                    |    :::
 if (!control_block_ptr->refs           |    if (!control_block_ptr->refs
       .fetch_sub(                      |          .fetch_sub(
@@ -2291,7 +2288,7 @@ load ref_cnt
 decrement ref_cnt 2->1
 store ref_cnt
 "release fence"
-if (ref_cnt == 0) {
+if (ref_cnt == 0) { // ref_cnt in register
   // branch not taken
 }
 ```
@@ -2308,7 +2305,7 @@ store ref_cnt
 // A: use of object
 
 "release fence"
-if (ref_cnt == 0) {
+if (ref_cnt == 0) { // ref_cnt in register
   // branch not taken
 }
 ```
@@ -2322,7 +2319,7 @@ load ref_cnt
 decrement ref_cnt 1->0
 store ref_cnt
 "release fence"
-if (ref_cnt == 0) {
+if (ref_cnt == 0) { // ref_cnt in register
   delete control_block_ptr; // B
 }
 ```
@@ -2335,7 +2332,7 @@ Transformation 4, reordering happens to that delete
 load ref_cnt
 decrement ref_cnt 1->0
 store ref_cnt
-if (ref_cnt == 0) {
+if (ref_cnt == 0) { // ref_cnt in register
   delete control_block_ptr; // B
 }
 "release fence"
@@ -2365,11 +2362,11 @@ store ref_cnt                         |
                                       |         load ref_cnt
                                       |         decrement ref_cnt 1->0
                                       |         store ref_cnt
-                                      |         if (ref_cnt == 0) {
+                                      |         if (ref_cnt == 0) { // reg
                                       |           delete control_block_ptr; // B
 // A: use of object                   |         }
 "release fence"                       |         "release fence"
-if (ref_cnt == 0) {                   |
+if (ref_cnt == 0) { // reg            |
   // branch not taken                 |
 }                                     |
 ```
@@ -2384,19 +2381,24 @@ if using `release` only, there is no such a `synchronize with` semantics.
 With `synchronizes-with`, there won't be any transforms like figure given above
 with `fetch_sub(memory_order_acq_rel)`.
 
+With semantics of "acquire + release",
+"A: use of object" cannot move down into or past the "critical section",
+and "delete control_block_ptr" cannot move up into or past "critical section",
+problem solved.
+
 ```
 // Thread 1, 2->1                     |        // Thread 2, 1->0
-"acquire fence"                       |
+// A: use of object //cannot move down|
+"acquire & release fence"             |
 load ref_cnt                          |
 decrement ref_cnt 2->1                |        :::
-// A: use of object                   |
-store ref_cnt           synchronizes-with
-"release fence"    ------------------------->  "acquire fence"
+store ref_cnt               synchronizes-with
+"acquire & release fence"  ----------------->  "acquire & release fence"
                                       |        load ref_cnt
                                       |        decrement ref_cnt 1->0
                                       |        store ref_cnt
-                                      |        "release fence"
-if (ref_cnt == 0) {                   |        if (ref_cnt == 0) {
+                                      |        "acquire & release fence"
+if (ref_cnt == 0) {                   |        if (ref_cnt == 0) { // can not move up
   // branch not taken                 |          delete control_block_ptr; // B
 }                                     |        }
 ```
@@ -2423,23 +2425,24 @@ glibc 2.28 release <https://www.sourceware.org/ml/libc-alpha/2018-08/msg00003.ht
 ## 12 Recap and conclusion
 
 This post first introduces the hardware architecture cache and cache line, which
-may introduce OoO, and then discus about runtime and compile-time reordering
-introduced by optimization, and later on, we discus about how to control the
+may introduce OoO, and then discusses about runtime and compile-time reordering
+introduced by optimization, and later on, we discusses about how to control the
 reordering. Hence, we introduce the hardware and software memory model.
 After Introduction of MM, we talk lots of c++ memory ordering, and MM of
 C++11. And finally we bring up the lock-free programming which is the real
-application of MMs.
+application of MM.
 
-Hardware, compiler, and C++ are complicated and powerful, we may not know all
-the stuffs they've done for us, but we need to know the principle.
+Hardware, compiler and C++ are complicated and powerful, we may not know all
+the stuffs they've done for us, but we need to know the principle, that's what
+this post tries todo.
 
 Modern C++, especially C++11, abstracts the memory model very well, the concepts
 and potability of `<atomic>` are very good, helps C++ users a lot, it's very
-hard to do that, but C++ standard committee actually did, bravo!
+hard to do that, but C++ standard committee actually did, many thanks to them!
 
 We talked lock-free programing at last, and found it's a very tough task to do
-general tasks with lock-free technique, we have to do a lot trade-offs be very
-very very careful when we are doing lock-free programming.
+general tasks with lock-free technique, we have to do a lot trade-offs and be
+very very very careful when we are doing lock-free programming.
 
 Finally, 
 > With Great Power Comes Lots Of Fun!
@@ -2464,7 +2467,7 @@ Finally,
 > [the-purpose-of-memory_order_consume-in-cpp11](https://preshing.com/20140709/the-purpose-of-memory_order_consume-in-cpp11)  
 > [can-reordering-of-release-acquire-operations-introduce-deadlock](https://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/)  
 
-Jeff Preshing's posts of "lock-free programing" serial, if you are new to
+Jeff Preshing's posts of "lock-free programing" series, if you are new to
 lock-free programming or software/hardware memory ordering, read them in the
 given order, I can ensure that it may enlighten you greatly.
 
@@ -2528,6 +2531,24 @@ helpful for understanding these concepts.
 The purpose/definition of memory model is defined in §41.1.
 
 > [obstruction-freedom](http://www.cs.yale.edu/homes/aspnes/pinewiki/ObstructionFreedom.html)
+
+<a name="lock-free definition" />
+> [Lock-Free and Wait-Free, definition and examples](http://concurrencyfreaks.blogspot.com/2013/05/lock-free-and-wait-free-definition-and.html)
+
+An article puts definitions of blocking, lock-free, wait-free and
+obstruciton-free all together.
+
+Blocking
+    1. Blocking
+    2. Starvation-Free
+Obstruction-Free
+    3. Obstruction-Free
+Lock-Free
+    4. Lock-Free (LF)
+Wait-Free
+    5. Wait-Free (WF)
+    6. Wait-Free Bounded (WFB)
+    7. Wait-Free Population Oblivious (WFPO)
 
 > [rust memory ordering](https://www.jianshu.com/p/511cde6b62a6)  
 
