@@ -48,7 +48,7 @@ owner:
   name:           Gavin Chou
   site:           http://gavinchou.github.io
   avatar:         images/avatar.jpg
-  bio:            "Senior Software Engineer at Baidu Inc., working on cloud storage"
+  bio:            "Staff Software Engineer at Baidu Inc., working on distributed database and cloud storage"
   email:          gavin*@gmail.com
   # Twitter nick for use in Twitter cards and follow button.
   # twitter: Gavin Chou # if no twitter in this config, the twitter follow button will be removed
