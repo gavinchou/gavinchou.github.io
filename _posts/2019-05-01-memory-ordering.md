@@ -58,8 +58,8 @@ This post covers the following questions
 	 32KB 大小, 采用static memory, 速度最快(也最贵), 最接近CPU的速度.
 2. 大小`L1 < L2 < L3`, 速度`L1 > L2 > L3`, 查找顺序`L1 > L2 > L3`
 2. L3以及更高level的cache就是若干个核共享的cache
-4. 现代CPU基本都是多核, 每个核有自己的cache(local cache), 增强了性能也引入了
-	 额外的**使用复杂性**
+4. 现代CPU基本都是多核, 每个核有自己的cache(local cache), 增强了性能同时也引入了
+	 额外的**使用复杂性**(cache bouncing等)
 5. 这里没说Intel的[hyper threading技术](https://en.wikipedia.org/wiki/Hyper-threading)
 	 就是一个物理核上有俩逻辑核, 跟本文没关系不描述了
 
@@ -242,8 +242,12 @@ cache line的值都能达到一致的状态, 这个有点类似于分布式中�
 > 
 > "Dr. Bandwidth"
 
-cache coherence 解决的是核之间数据可见性的问题, 但是并没有解决可见顺序的问题,
-顺序问题也是本文要着重要阐述说明的问题.
+cache coherence 解决了核之间数据可见性以及顺序的问题, 本质上可以把cache当做内存
+系统的一部分, 有没有cache对各个CPU来说都是一样的,
+只要写到了cache(所以可以有很多级cache), 其他核就可以看到该数据,
+并且顺序是确定的 -- 保证顺序一致性.
+
+对内存可见性和顺序有影响的部件是接下来要介绍的store buffer.
 
 ### 3.5 Store buffer
 
@@ -1597,6 +1601,71 @@ Here is my conclusion on this question:
 		if (compare_exchange_strong(:::)) { ::: }
 		```
 
+`compare_exchange_strong/weak` is conditional read-write-modify operation, also
+called compare-and-swap (CAS).
+
+Naive CAS implementation on hardware may look like this (pseudo code):
+
+```
+bool compare_exchange_strong(T& old_v, T new_v) {
+ Lock L;        // Get exclusive access
+ T tmp = value; // Current value of the atomic
+ if (tmp != old_v) { old_v = tmp; return false; }
+ value = new_v;
+ return true;
+}
+
+// Lock is not a real mutex but some form of exclusive access implemented in hardware
+```
+
+Notice that read is faster than write, we can read first and than lock,
+the implementation can be faster:
+
+```
+bool compare_exchange_strong(T& old_v, T new_v) {
+ T tmp = value;                                   // Current value of the atomic
+ if (tmp != old_v) { old_v = tmp; return false; }
+ Lock L;                                          // Get exclusive access
+ tmp = value;                                     // value could have changed!
+ if (tmp != olv_v) { old_v = tmp; return false; }
+ value = new_v;
+ return true;
+}
+
+// Double-checked locking pattern is back!
+```
+
+If exclusive access is hard(expensive) to get, use weak lock other than strong
+lock, let someone else try:
+
+```
+bool compare_exchange_weak(T& old_v, T new_v) {
+ T tmp = value;                                   // Current value of the atomic
+ if (tmp != old_v) { old_v = tmp; return false; }
+ TimedLock L;                                     // Get exclusive access or fail
+ if (!L.locked()) return false;                   // old_v is correct
+ tmp = value;                                     // value could have changed!
+ if (tmp != olv_v) { old_v = tmp; return false; }
+ value = new_v;
+ return true;
+}
+```
+
+We can see why there is **spurious error** for `compare_exchange_weak` by
+explaining with pseudo code: CPU reads the value and passes the check but it
+fails to "lock" the "bus", the call of `compare_exchange_weak` returns false.
+
+From the pseudo code implementations, `compare_exchange_weak` and
+`compare_exchange_string` seems to be the same expensive, why do we say that
+`compare_exchange_weak` is cheaper/faster?
+When `TimedLock` fails, there is another core succeeds, if `TimedLock`
+is much easier or more light-weight than `Lock` to make progress,
+the **overall** performance will be better with `compare_exchange_weak`.
+
+`compare_exchange_weak`  and `compare_exchange_strong` act the same on
+x86-64, however, on SPARC or ARM, they are not the same.
+Performance varies from platform to platform.
+
 ## 9 volatile
 
 `volatile` in C++ is only a compile-time keyword which prevents the compiler
@@ -2632,3 +2701,11 @@ C++11/14/17, like:
 4. etc.
 it's worth watching though the content arrangement seems a little messy.
 
+
+<a name="CAS weak strong explained"/>
+> [CppCon 2017: Fedor Pikus “C++ atomics, from basic to advanced. What do they really do?”](https://youtu.be/ZQFzMfHIxng)
+
+This talk gives very clear explanation of CAS weak/strong, Fedor uses DCLP to
+explain CAS implementation, which is impressive.
+And he also talks about performance compared to non-atomic operations and mutex
+operations.
