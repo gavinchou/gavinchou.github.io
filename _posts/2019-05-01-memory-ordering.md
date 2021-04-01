@@ -247,6 +247,8 @@ cache coherence 解决了核之间数据可见性以及顺序的问题, 本质�
 只要写到了cache(所以可以有很多级cache), 其他核就可以看到该数据,
 并且顺序是确定的 -- 保证顺序一致性.
 
+[MESI](#MESI wikipedia)是一种cache coherence协议, 可以搜索关键词获取更多信息, 这里不展开阐述.
+
 对内存可见性和顺序有影响的部件是接下来要介绍的store buffer.
 
 ### 3.5 Store buffer
@@ -1656,7 +1658,7 @@ explaining with pseudo code: CPU reads the value and passes the check but it
 fails to "lock" the "bus", the call of `compare_exchange_weak` returns false.
 
 From the pseudo code implementations, `compare_exchange_weak` and
-`compare_exchange_string` seems to be the same expensive, why do we say that
+`compare_exchange_strong` seems to be the same expensive, why do we say that
 `compare_exchange_weak` is cheaper/faster?
 When `TimedLock` fails, there is another core succeeds, if `TimedLock`
 is much easier or more light-weight than `Lock` to make progress,
@@ -2208,13 +2210,13 @@ template<typename T>
 void slist<T>::pop(const T& t) {
   auto h = head.load();
   do { // does not dereference the pointer to data
-    HeadNode new_head {h.ver + 1, h.ptr}; // increase ver
+    HeadNode new_head {h.ver + 1, h.ptr->next}; // increase ver
   } while (!head.compare_exchange_weak(h, new_head));
   delete h.ptr;
 }
 ```
 
-It resolves the problems I mentioned before:
+It resolves the problems mentioned before:
 * every time the head has been updated, version of head increased, ABA problem
 	resolved
 * we don't dereference any pointers in the linked list,
@@ -2652,6 +2654,13 @@ Some disscusion on store buffer.
 
 一本书, 有pdf版本.
 C++ 并行编程, 有锁无锁, 内存模型讲的比较清楚. 附带了一些例子.
+
+<a name="MESI wikipedia"/>
+> [MESI cache coherence protocol](https://en.wikipedia.org/wiki/MESI_protocol)
+
+> ["Memory System (Memory Coherency and Protocol)" (PDF). AMD64 Technology. September 2006.](https://www.cse.wustl.edu/~roger/569M/24593.pdf)
+
+
 
 ### 13.2 Videos and talks
 > [CppCon 2014: Herb Sutter "Lock-Free Programming" 1/2](https://youtu.be/c1gO9aB9nbs)  
