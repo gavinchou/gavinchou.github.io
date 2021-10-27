@@ -2207,20 +2207,20 @@ void slist<T>::push_front(const T& t) {
 }
 
 template<typename T>
-void slist<T>::pop(const T& t) {
+void slist<T>::pop_front(T** t) {
   auto h = head.load();
-  do { // does not dereference the pointer to data
+  do {
     HeadNode new_head {h.ver + 1, h.ptr->next}; // increase ver
   } while (!head.compare_exchange_weak(h, new_head));
-  delete h.ptr;
+  *t = h.ptr; // delay reclamation of h.ptr
 }
 ```
 
-It resolves the problems mentioned before:
+It resolves some of problems mentioned before:
 * every time the head has been updated, version of head increased, ABA problem
 	resolved
-* we don't dereference any pointers in the linked list,
-	porblem of dereferencing deleted pointer resolved
+* no immediately reclamation of data when pop,
+	leave the reclamation problem to user (it's ugly...)
 
 However, it's not perfect, it may not work as lock-free on all hardwares due to
 the "big" structure `NodeHead`, some hardware may not have large enough
