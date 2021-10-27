@@ -70,7 +70,7 @@ Ctrl-s            | In effect, locks the screen (Ctrl-q unlocks it). XOFF signal
 Ctrl-t            | Switched the character before the cursor with the one under the cursor
 Ctrl-v            | displays next typed characters (code?)
 Ctrl-x            |  ?
-Ctrl-y            | Enters the command executed two lines before, without clearing the line of previous contents
+Ctrl-y            | **paste deleted content by clearing commands(ctrl-k, ctrl-u or ctrl-w)**
 Ctrl-z            | pauses process and places it in terminal background (resume with command 'fg')
 
 ### Determine "essentials" of keys
