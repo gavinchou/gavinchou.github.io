@@ -1,5 +1,3 @@
-# 从 shared_from_this() 谈智能指针 weak_ptr 和 shared_ptr 的实现
-
 ---
 layout: post
 title:  "从 shared_from_this() 谈智能指针 weak_ptr 和 shared_ptr 的实现"
@@ -12,6 +10,8 @@ tags: c++, gcc, shared_from_this, weak_ptr, shared_ptr
 control block 用于保存引用计数以及如何回收(deleter)等信息,
 有一些实现(gcc)会将ptr放到control block里,
 有的(llvm libc++)则分开存放, 两种实现没有本质上的区别.
+
+<!-- more -->
 
 在llvm libc++实现里这个control block 就叫`__cntrl_`,
 gcc实现里这个control block在代码里叫`__shared_count`,
